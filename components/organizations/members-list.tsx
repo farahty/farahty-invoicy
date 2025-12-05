@@ -79,7 +79,7 @@ export function MembersList({
     setRemovingId(memberToRemove.id);
     try {
       const result = await organization.removeMember({
-        memberIdOrEmail: memberToRemove.userId,
+        memberIdOrEmail: memberToRemove.user.email,
       });
 
       if (result.error) {
