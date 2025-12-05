@@ -52,12 +52,12 @@ const actionIcons = {
 };
 
 const actionColors = {
-  created: "text-status-success-foreground bg-status-success-bg",
-  updated: "text-status-info-foreground bg-status-info-bg",
+  created: "text-chart-2 bg-chart-2/15",
+  updated: "text-chart-1 bg-chart-1/15",
   deleted: "text-destructive bg-destructive/10",
-  status_changed: "text-status-warning-foreground bg-status-warning-bg",
-  sent: "text-status-purple-foreground bg-status-purple-bg",
-  payment_recorded: "text-status-success-foreground bg-status-success-bg",
+  status_changed: "text-chart-3 bg-chart-3/15",
+  sent: "text-chart-4 bg-chart-4/15",
+  payment_recorded: "text-chart-2 bg-chart-2/15",
   payment_deleted: "text-destructive bg-destructive/10",
 };
 

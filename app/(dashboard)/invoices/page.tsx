@@ -21,11 +21,10 @@ interface InvoicesPageProps {
 
 const statusStyles: Record<InvoiceStatus, string> = {
   draft: "bg-muted text-muted-foreground hover:bg-muted",
-  sent: "bg-status-info-bg text-status-info-foreground hover:bg-status-info-bg",
-  partial:
-    "bg-status-warning-bg text-status-warning-foreground hover:bg-status-warning-bg",
-  paid: "bg-status-success-bg text-status-success-foreground hover:bg-status-success-bg",
-  overdue: "bg-destructive/10 text-destructive hover:bg-destructive/10",
+  sent: "bg-chart-4/15 text-chart-4 hover:bg-chart-4/20",
+  partial: "bg-chart-3/15 text-chart-3 hover:bg-chart-3/20",
+  paid: "bg-chart-2/15 text-chart-2 hover:bg-chart-2/20",
+  overdue: "bg-destructive/10 text-destructive hover:bg-destructive/15",
   cancelled: "bg-muted text-muted-foreground hover:bg-muted",
 };
 

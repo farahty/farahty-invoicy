@@ -29,9 +29,9 @@ interface InvoiceDetailPageProps {
 
 const statusStyles: Record<InvoiceStatus, string> = {
   draft: "bg-muted text-muted-foreground",
-  sent: "bg-status-info-bg text-status-info-foreground",
-  partial: "bg-status-warning-bg text-status-warning-foreground",
-  paid: "bg-status-success-bg text-status-success-foreground",
+  sent: "bg-chart-4/15 text-chart-4",
+  partial: "bg-chart-3/15 text-chart-3",
+  paid: "bg-chart-2/15 text-chart-2",
   overdue: "bg-destructive/10 text-destructive",
   cancelled: "bg-muted text-muted-foreground",
 };
@@ -222,7 +222,7 @@ export default async function InvoiceDetailPage({
                 </div>
                 {parseFloat(invoice.amountPaid) > 0 && (
                   <>
-                    <div className="flex justify-between text-status-success-foreground">
+                    <div className="flex justify-between text-chart-2">
                       <span>{tPayments("amountPaid")}</span>
                       <span>-{formatCurrency(invoice.amountPaid)}</span>
                     </div>
@@ -231,9 +231,7 @@ export default async function InvoiceDetailPage({
                       <span>{tPayments("balanceDue")}</span>
                       <span
                         className={
-                          hasBalance
-                            ? "text-destructive"
-                            : "text-status-success-foreground"
+                          hasBalance ? "text-destructive" : "text-chart-2"
                         }
                       >
                         {formatCurrency(invoice.balanceDue)}

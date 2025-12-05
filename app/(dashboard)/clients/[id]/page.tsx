@@ -26,9 +26,9 @@ interface ClientDetailPageProps {
 
 const statusStyles: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
-  sent: "bg-status-info-bg text-status-info-foreground",
-  partial: "bg-status-warning-bg text-status-warning-foreground",
-  paid: "bg-status-success-bg text-status-success-foreground",
+  sent: "bg-chart-4/15 text-chart-4",
+  partial: "bg-chart-3/15 text-chart-3",
+  paid: "bg-chart-2/15 text-chart-2",
   overdue: "bg-destructive/10 text-destructive",
   cancelled: "bg-muted text-muted-foreground",
 };
@@ -112,9 +112,9 @@ export default async function ClientDetailPage({
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <div className="flex items-center justify-center mb-2">
-                  <CircleDollarSign className="h-5 w-5 text-status-success-foreground" />
+                  <CircleDollarSign className="h-5 w-5 text-chart-2" />
                 </div>
-                <p className="text-2xl font-bold text-status-success-foreground">
+                <p className="text-2xl font-bold text-chart-2">
                   {formatCurrency(client.invoiceSummary?.totalPaid || 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">
@@ -126,16 +126,14 @@ export default async function ClientDetailPage({
                   <AlertCircle
                     className={`h-5 w-5 ${
                       hasOutstandingBalance
-                        ? "text-status-warning-foreground"
+                        ? "text-chart-3"
                         : "text-muted-foreground"
                     }`}
                   />
                 </div>
                 <p
                   className={`text-2xl font-bold ${
-                    hasOutstandingBalance
-                      ? "text-status-warning-foreground"
-                      : "text-foreground"
+                    hasOutstandingBalance ? "text-chart-3" : "text-foreground"
                   }`}
                 >
                   {formatCurrency(outstandingBalance)}
