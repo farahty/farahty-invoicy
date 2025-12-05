@@ -162,7 +162,7 @@ function SidebarContent({
           </div>
 
           <Link
-            href="/settings"
+            href="/account"
             onClick={onClose}
             className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors group"
           >

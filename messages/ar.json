@@ -38,6 +38,7 @@
     "invoices": "الفواتير",
     "clients": "العملاء",
     "settings": "الإعدادات",
+    "account": "الحساب",
     "menu": "القائمة",
     "signOut": "تسجيل الخروج"
   },
@@ -228,7 +229,10 @@
     "arabic": "العربية",
     "english": "English",
     "personalInfo": "المعلومات الشخصية",
+    "personalInfoDescription": "إدارة إعدادات حسابك الشخصي",
     "yourName": "اسمك",
+    "emailCannotBeChanged": "لا يمكن تغيير عنوان البريد الإلكتروني",
+    "accountSettings": "إعدادات الحساب",
     "companyInfo": "معلومات الشركة",
     "companyInfoDescription": "ستظهر هذه المعلومات على فواتيرك",
     "companyName": "اسم الشركة",

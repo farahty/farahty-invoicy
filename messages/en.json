@@ -38,6 +38,7 @@
     "invoices": "Invoices",
     "clients": "Clients",
     "settings": "Settings",
+    "account": "Account",
     "menu": "Menu",
     "signOut": "Sign out"
   },
@@ -228,7 +229,10 @@
     "arabic": "العربية",
     "english": "English",
     "personalInfo": "Personal Information",
+    "personalInfoDescription": "Manage your personal account settings",
     "yourName": "Your Name",
+    "emailCannotBeChanged": "Email address cannot be changed",
+    "accountSettings": "Account Settings",
     "companyInfo": "Company Information",
     "companyInfoDescription": "This information will appear on your invoices",
     "companyName": "Company Name",
