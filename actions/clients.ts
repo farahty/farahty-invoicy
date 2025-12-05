@@ -1,8 +1,8 @@
 "use server";
 
 import { db, clients, type NewClient, type Client } from "@/db";
-import { eq, and, desc, ilike, or } from "drizzle-orm";
-import { requireAuth } from "@/lib/session";
+import { eq, and, desc, ilike, or, isNull } from "drizzle-orm";
+import { requireOrgAuth } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -20,18 +20,24 @@ const clientSchema = z.object({
 type ClientInput = z.infer<typeof clientSchema>;
 
 export async function getClients(search?: string) {
-  const session = await requireAuth();
+  const { activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return [];
+  }
+
+  const baseCondition = eq(clients.organizationId, activeOrganization.id);
 
   const whereConditions = search
     ? and(
-        eq(clients.userId, session.user.id),
+        baseCondition,
         or(
           ilike(clients.name, `%${search}%`),
           ilike(clients.email, `%${search}%`),
           ilike(clients.phone, `%${search}%`)
         )
       )
-    : eq(clients.userId, session.user.id);
+    : baseCondition;
 
   return db.query.clients.findMany({
     where: whereConditions,
@@ -40,10 +46,17 @@ export async function getClients(search?: string) {
 }
 
 export async function getClient(id: string) {
-  const session = await requireAuth();
+  const { activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return null;
+  }
 
   return db.query.clients.findFirst({
-    where: and(eq(clients.id, id), eq(clients.userId, session.user.id)),
+    where: and(
+      eq(clients.id, id),
+      eq(clients.organizationId, activeOrganization.id)
+    ),
     with: {
       invoices: {
         orderBy: (invoices, { desc }) => [desc(invoices.createdAt)],
@@ -54,7 +67,11 @@ export async function getClient(id: string) {
 }
 
 export async function createClient(data: ClientInput) {
-  const session = await requireAuth();
+  const { user, activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return { success: false, error: "No active organization" };
+  }
 
   const validated = clientSchema.parse(data);
 
@@ -63,7 +80,8 @@ export async function createClient(data: ClientInput) {
     .values({
       ...validated,
       email: validated.email || null,
-      userId: session.user.id,
+      userId: user.id,
+      organizationId: activeOrganization.id,
     })
     .returning();
 
@@ -72,13 +90,20 @@ export async function createClient(data: ClientInput) {
 }
 
 export async function updateClient(id: string, data: ClientInput) {
-  const session = await requireAuth();
+  const { activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return { success: false, error: "No active organization" };
+  }
 
   const validated = clientSchema.parse(data);
 
   // Verify ownership
   const existing = await db.query.clients.findFirst({
-    where: and(eq(clients.id, id), eq(clients.userId, session.user.id)),
+    where: and(
+      eq(clients.id, id),
+      eq(clients.organizationId, activeOrganization.id)
+    ),
   });
 
   if (!existing) {
@@ -101,11 +126,18 @@ export async function updateClient(id: string, data: ClientInput) {
 }
 
 export async function deleteClient(id: string) {
-  const session = await requireAuth();
+  const { activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return { success: false, error: "No active organization" };
+  }
 
   // Verify ownership
   const existing = await db.query.clients.findFirst({
-    where: and(eq(clients.id, id), eq(clients.userId, session.user.id)),
+    where: and(
+      eq(clients.id, id),
+      eq(clients.organizationId, activeOrganization.id)
+    ),
   });
 
   if (!existing) {

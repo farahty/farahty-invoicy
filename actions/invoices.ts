@@ -10,8 +10,9 @@ import {
   type NewInvoiceItem,
   type InvoiceStatus,
 } from "@/db";
+import { organizations } from "@/db/schema";
 import { eq, and, desc, ilike, or, sql, inArray } from "drizzle-orm";
-import { requireAuth } from "@/lib/session";
+import { requireOrgAuth } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Resend } from "resend";
@@ -41,9 +42,13 @@ export async function getInvoices(filters?: {
   status?: InvoiceStatus;
   clientId?: string;
 }) {
-  const session = await requireAuth();
+  const { activeOrganization } = await requireOrgAuth();
 
-  let whereConditions = eq(invoices.userId, session.user.id);
+  if (!activeOrganization) {
+    return [];
+  }
+
+  let whereConditions = eq(invoices.organizationId, activeOrganization.id);
 
   if (filters?.status) {
     whereConditions = and(
@@ -81,10 +86,17 @@ export async function getInvoices(filters?: {
 }
 
 export async function getInvoice(id: string) {
-  const session = await requireAuth();
+  const { activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return null;
+  }
 
   return db.query.invoices.findFirst({
-    where: and(eq(invoices.id, id), eq(invoices.userId, session.user.id)),
+    where: and(
+      eq(invoices.id, id),
+      eq(invoices.organizationId, activeOrganization.id)
+    ),
     with: {
       client: true,
       items: {
@@ -95,21 +107,30 @@ export async function getInvoice(id: string) {
 }
 
 export async function generateInvoiceNumber() {
-  const session = await requireAuth();
+  const { activeOrganization } = await requireOrgAuth();
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, session.user.id),
+  if (!activeOrganization) {
+    throw new Error("No active organization");
+  }
+
+  // Get organization for invoice settings
+  const org = await db.query.organizations.findFirst({
+    where: eq(organizations.id, activeOrganization.id),
   });
 
-  const prefix = user?.invoicePrefix || "INV";
-  const nextNumber = user?.invoiceNextNumber || 1;
+  const prefix = org?.invoicePrefix || "INV";
+  const nextNumber = org?.invoiceNextNumber || 1;
   const year = new Date().getFullYear();
 
   return `${prefix}-${year}-${String(nextNumber).padStart(4, "0")}`;
 }
 
 export async function createInvoice(data: InvoiceInput) {
-  const session = await requireAuth();
+  const { user, activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return { success: false, error: "No active organization" };
+  }
 
   const validated = invoiceSchema.parse(data);
 
@@ -117,7 +138,7 @@ export async function createInvoice(data: InvoiceInput) {
   const client = await db.query.clients.findFirst({
     where: and(
       eq(clients.id, validated.clientId),
-      eq(clients.userId, session.user.id)
+      eq(clients.organizationId, activeOrganization.id)
     ),
   });
 
@@ -140,7 +161,8 @@ export async function createInvoice(data: InvoiceInput) {
   const [invoice] = await db
     .insert(invoices)
     .values({
-      userId: session.user.id,
+      userId: user.id,
+      organizationId: activeOrganization.id,
       clientId: validated.clientId,
       invoiceNumber,
       date: validated.date,
@@ -167,13 +189,18 @@ export async function createInvoice(data: InvoiceInput) {
 
   await db.insert(invoiceItems).values(itemsToInsert);
 
-  // Increment invoice number for user
+  // Increment invoice number for organization
+  const org = await db.query.organizations.findFirst({
+    where: eq(organizations.id, activeOrganization.id),
+  });
+  const currentNextNumber = org?.invoiceNextNumber || 1;
+
   await db
-    .update(users)
+    .update(organizations)
     .set({
-      invoiceNextNumber: sql`${users.invoiceNextNumber} + 1`,
+      invoiceNextNumber: currentNextNumber + 1,
     })
-    .where(eq(users.id, session.user.id));
+    .where(eq(organizations.id, activeOrganization.id));
 
   revalidatePath("/invoices");
   revalidatePath("/dashboard");
@@ -181,13 +208,20 @@ export async function createInvoice(data: InvoiceInput) {
 }
 
 export async function updateInvoice(id: string, data: InvoiceInput) {
-  const session = await requireAuth();
+  const { activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return { success: false, error: "No active organization" };
+  }
 
   const validated = invoiceSchema.parse(data);
 
   // Verify invoice ownership
   const existing = await db.query.invoices.findFirst({
-    where: and(eq(invoices.id, id), eq(invoices.userId, session.user.id)),
+    where: and(
+      eq(invoices.id, id),
+      eq(invoices.organizationId, activeOrganization.id)
+    ),
   });
 
   if (!existing) {
@@ -198,7 +232,7 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
   const client = await db.query.clients.findFirst({
     where: and(
       eq(clients.id, validated.clientId),
-      eq(clients.userId, session.user.id)
+      eq(clients.organizationId, activeOrganization.id)
     ),
   });
 
@@ -253,11 +287,18 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
 }
 
 export async function updateInvoiceStatus(id: string, status: InvoiceStatus) {
-  const session = await requireAuth();
+  const { activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return { success: false, error: "No active organization" };
+  }
 
   // Verify ownership
   const existing = await db.query.invoices.findFirst({
-    where: and(eq(invoices.id, id), eq(invoices.userId, session.user.id)),
+    where: and(
+      eq(invoices.id, id),
+      eq(invoices.organizationId, activeOrganization.id)
+    ),
   });
 
   if (!existing) {
@@ -286,11 +327,18 @@ export async function updateInvoiceStatus(id: string, status: InvoiceStatus) {
 }
 
 export async function deleteInvoice(id: string) {
-  const session = await requireAuth();
+  const { activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return { success: false, error: "No active organization" };
+  }
 
   // Verify ownership
   const existing = await db.query.invoices.findFirst({
-    where: and(eq(invoices.id, id), eq(invoices.userId, session.user.id)),
+    where: and(
+      eq(invoices.id, id),
+      eq(invoices.organizationId, activeOrganization.id)
+    ),
   });
 
   if (!existing) {
@@ -306,9 +354,13 @@ export async function deleteInvoice(id: string) {
 }
 
 export async function getItemSuggestions(query: string) {
-  const session = await requireAuth();
+  const { activeOrganization } = await requireOrgAuth();
 
-  // Get unique item descriptions from user's invoices
+  if (!activeOrganization) {
+    return [];
+  }
+
+  // Get unique item descriptions from organization's invoices
   // If query is empty, return recent items; otherwise filter by query
   const results = await db
     .selectDistinct({ description: invoiceItems.description })
@@ -317,10 +369,10 @@ export async function getItemSuggestions(query: string) {
     .where(
       query && query.length > 0
         ? and(
-            eq(invoices.userId, session.user.id),
+            eq(invoices.organizationId, activeOrganization.id),
             ilike(invoiceItems.description, `%${query}%`)
           )
-        : eq(invoices.userId, session.user.id)
+        : eq(invoices.organizationId, activeOrganization.id)
     )
     .limit(10);
 
@@ -328,12 +380,16 @@ export async function getItemSuggestions(query: string) {
 }
 
 export async function sendInvoiceEmail(invoiceId: string) {
-  const session = await requireAuth();
+  const { activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return { success: false, error: "No active organization" };
+  }
 
   const invoice = await db.query.invoices.findFirst({
     where: and(
       eq(invoices.id, invoiceId),
-      eq(invoices.userId, session.user.id)
+      eq(invoices.organizationId, activeOrganization.id)
     ),
     with: {
       client: true,
@@ -349,9 +405,13 @@ export async function sendInvoiceEmail(invoiceId: string) {
     return { success: false, error: "Client has no email address" };
   }
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, session.user.id),
+  // Get organization for company info
+  const org = await db.query.organizations.findFirst({
+    where: eq(organizations.id, activeOrganization.id),
   });
+  const companyName = org?.name || "";
+  const companyAddress = org?.address || "";
+  const companyEmail = org?.email || "";
 
   const formatCurrency = (amount: string | number) => {
     const value = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -367,9 +427,7 @@ export async function sendInvoiceEmail(invoiceId: string) {
     await resend.emails.send({
       from: process.env.DEFAULT_FROM_EMAIL || "no-reply@farahty.com",
       to: invoice.client.email,
-      subject: `Invoice ${invoice.invoiceNumber} from ${
-        user?.companyName || user?.name
-      }`,
+      subject: `Invoice ${invoice.invoiceNumber} from ${companyName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
@@ -418,9 +476,9 @@ export async function sendInvoiceEmail(invoiceId: string) {
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
           
           <p style="color: #999; font-size: 12px; text-align: center;">
-            ${user?.companyName || user?.name}<br />
-            ${user?.companyAddress || ""}<br />
-            ${user?.companyEmail || user?.email}
+            ${companyName}<br />
+            ${companyAddress}<br />
+            ${companyEmail}
           </p>
         </div>
       `,
@@ -437,10 +495,17 @@ export async function sendInvoiceEmail(invoiceId: string) {
 }
 
 export async function duplicateInvoice(id: string) {
-  const session = await requireAuth();
+  const { user, activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return { success: false, error: "No active organization" };
+  }
 
   const original = await db.query.invoices.findFirst({
-    where: and(eq(invoices.id, id), eq(invoices.userId, session.user.id)),
+    where: and(
+      eq(invoices.id, id),
+      eq(invoices.organizationId, activeOrganization.id)
+    ),
     with: {
       items: true,
     },
@@ -456,7 +521,8 @@ export async function duplicateInvoice(id: string) {
   const [newInvoice] = await db
     .insert(invoices)
     .values({
-      userId: session.user.id,
+      userId: user.id,
+      organizationId: activeOrganization.id,
       clientId: original.clientId,
       invoiceNumber,
       date: new Date(),
@@ -483,13 +549,18 @@ export async function duplicateInvoice(id: string) {
 
   await db.insert(invoiceItems).values(itemsToInsert);
 
-  // Increment invoice number
+  // Increment invoice number for organization
+  const org = await db.query.organizations.findFirst({
+    where: eq(organizations.id, activeOrganization.id),
+  });
+  const currentNextNumber = org?.invoiceNextNumber || 1;
+
   await db
-    .update(users)
+    .update(organizations)
     .set({
-      invoiceNextNumber: sql`${users.invoiceNextNumber} + 1`,
+      invoiceNextNumber: currentNextNumber + 1,
     })
-    .where(eq(users.id, session.user.id));
+    .where(eq(organizations.id, activeOrganization.id));
 
   revalidatePath("/invoices");
   return { success: true, invoice: newInvoice };

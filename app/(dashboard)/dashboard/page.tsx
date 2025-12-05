@@ -1,14 +1,14 @@
 import { db, invoices, clients } from "@/db";
 import { eq, desc, sql } from "drizzle-orm";
-import { requireAuth } from "@/lib/session";
+import { requireOrgAuth } from "@/lib/session";
 import { DashboardMetrics } from "@/components/dashboard/metrics";
 import { RecentInvoices } from "@/components/dashboard/recent-invoices";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { getTranslations } from "next-intl/server";
 
 export default async function DashboardPage() {
-  const session = await requireAuth();
-  const userId = session.user.id;
+  const { user, activeOrganization } = await requireOrgAuth();
+  const organizationId = activeOrganization!.id;
   const t = await getTranslations("dashboard");
 
   // Fetch dashboard data
@@ -22,11 +22,11 @@ export default async function DashboardPage() {
         totalInvoices: sql<number>`COUNT(*)`,
       })
       .from(invoices)
-      .where(eq(invoices.userId, userId)),
+      .where(eq(invoices.organizationId, organizationId)),
 
     // Recent invoices with client info
     db.query.invoices.findMany({
-      where: eq(invoices.userId, userId),
+      where: eq(invoices.organizationId, organizationId),
       with: {
         client: true,
       },
@@ -38,7 +38,7 @@ export default async function DashboardPage() {
     db
       .select({ count: sql<number>`COUNT(*)` })
       .from(clients)
-      .where(eq(clients.userId, userId)),
+      .where(eq(clients.organizationId, organizationId)),
   ]);
 
   const metrics = {
@@ -57,7 +57,7 @@ export default async function DashboardPage() {
           {t("title")}
         </h1>
         <p className="text-muted-foreground mt-1">
-          {t("welcome")}, {session.user.name.split(" ")[0]}!
+          {t("welcome")}, {user.name.split(" ")[0]}!
         </p>
       </div>
 

@@ -28,6 +28,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { OrganizationSwitcher } from "@/components/organizations/organization-switcher";
 
 interface SidebarProps {
   user: {
@@ -104,14 +106,20 @@ export function Sidebar({ user }: SidebarProps) {
           <span className="font-semibold text-lg text-foreground">Farahty</span>
         </div>
 
+        {/* Organization Switcher */}
+        <div className="px-2 py-2 border-b border-border">
+          <OrganizationSwitcher />
+        </div>
+
         {/* Navigation */}
         <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
           {renderNavLinks()}
         </nav>
 
-        {/* Language Switcher */}
-        <div className="px-4 py-2 border-t border-border">
+        {/* Language Switcher & Theme Toggle */}
+        <div className="px-4 py-2 border-t border-border flex items-center justify-between">
           <LanguageSwitcher />
+          <ThemeToggle />
         </div>
 
         {/* Quick Actions */}
@@ -215,14 +223,20 @@ export function Sidebar({ user }: SidebarProps) {
                   </Button>
                 </div>
 
+                {/* Organization Switcher */}
+                <div className="px-2 py-2 border-b border-border">
+                  <OrganizationSwitcher />
+                </div>
+
                 {/* Navigation */}
                 <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                   {renderNavLinks()}
                 </nav>
 
-                {/* Language Switcher */}
-                <div className="px-3 py-2 border-t border-border">
+                {/* Language Switcher & Theme Toggle */}
+                <div className="px-3 py-2 border-t border-border flex items-center justify-between">
                   <LanguageSwitcher />
+                  <ThemeToggle />
                 </div>
 
                 {/* Quick Actions */}

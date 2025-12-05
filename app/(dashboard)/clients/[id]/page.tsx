@@ -14,7 +14,6 @@ import {
   Plus,
 } from "lucide-react";
 import { format } from "date-fns";
-import { ClientActions } from "@/components/clients/client-actions";
 import { getTranslations } from "next-intl/server";
 
 interface ClientDetailPageProps {

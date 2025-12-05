@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -48,16 +49,23 @@ export default async function RootLayout({
   const isRtl = locale === "ar";
 
   return (
-    <html lang={locale} dir={isRtl ? "rtl" : "ltr"}>
+    <html lang={locale} dir={isRtl ? "rtl" : "ltr"} suppressHydrationWarning>
       <body
         className={`${inter.variable} ${notoSansArabic.variable} ${
           isRtl ? "font-arabic" : "font-sans"
         } antialiased`}
       >
-        <NextIntlClientProvider messages={messages}>
-          {children}
-          <Toaster position="top-center" richColors />
-        </NextIntlClientProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <NextIntlClientProvider messages={messages}>
+            {children}
+            <Toaster position="top-center" richColors />
+          </NextIntlClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

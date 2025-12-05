@@ -36,11 +36,13 @@ const settingsSchema = z.object({
 
 type SettingsFormData = z.infer<typeof settingsSchema>;
 
-interface SettingsFormProps {
+interface OrganizationSettingsFormProps {
   settings: OrganizationSettings;
 }
 
-export function SettingsForm({ settings }: SettingsFormProps) {
+export function OrganizationSettingsForm({
+  settings,
+}: OrganizationSettingsFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const t = useTranslations("settings");
 
@@ -83,13 +85,8 @@ export function SettingsForm({ settings }: SettingsFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* Organization Info */}
+        {/* Organization Name */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">{t("companyInfo")}</h3>
-          <p className="text-sm text-muted-foreground">
-            {t("companyInfoDescription")}
-          </p>
-
           <FormField
             control={form.control}
             name="name"
@@ -106,7 +103,10 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               </FormItem>
             )}
           />
+        </div>
 
+        {/* Company Details */}
+        <div className="space-y-4">
           <FormField
             control={form.control}
             name="email"
@@ -231,7 +231,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
         </div>
 
         <Button type="submit" disabled={isLoading}>
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
           {t("saveChanges")}
         </Button>
       </form>
