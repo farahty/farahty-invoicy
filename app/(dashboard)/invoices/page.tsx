@@ -175,7 +175,7 @@ export default async function InvoicesPage({
           </Card>
 
           {/* Mobile Card List */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden gap-4 flex flex-col">
             {invoices.map((invoice) => (
               <Link key={invoice.id} href={`/invoices/${invoice.id}`}>
                 <Card className="hover:bg-accent transition-colors">

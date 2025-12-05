@@ -3,9 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { organization } from "better-auth/plugins";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { sendEmail, emailSubjects } from "./email";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -30,10 +28,14 @@ export const auth = betterAuth({
         const inviteLink = `${
           process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
         }/accept-invitation/${data.id}`;
-        await resend.emails.send({
-          from: process.env.DEFAULT_FROM_EMAIL || "no-reply@farahty.com",
+
+        await sendEmail({
           to: data.email,
-          subject: `You've been invited to join ${data.organization.name} on Farahty`,
+          subject: emailSubjects.invitation.en(data.organization.name),
+          senderInfo: {
+            organizationName: data.organization.name,
+            organizationSlug: data.organization.slug,
+          },
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h1 style="color: #1a1a1a;">You're Invited!</h1>
@@ -41,11 +43,13 @@ export const auth = betterAuth({
                 data.inviter.user.name
               } has invited you to join <strong>${
             data.organization.name
-          }</strong> on Farahty.</p>
+          }</strong>.</p>
               <a href="${inviteLink}" style="display: inline-block; background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0;">Accept Invitation</a>
               <p style="color: #999; font-size: 14px;">This invitation will expire in 48 hours.</p>
               <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-              <p style="color: #999; font-size: 12px;">© ${new Date().getFullYear()} Farahty Invoice App</p>
+              <p style="color: #999; font-size: 12px;">© ${new Date().getFullYear()} ${
+            data.organization.name
+          }</p>
             </div>
           `,
         });
@@ -107,10 +111,9 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false,
     sendResetPassword: async ({ user, url }) => {
-      await resend.emails.send({
-        from: process.env.DEFAULT_FROM_EMAIL || "no-reply@farahty.com",
+      await sendEmail({
         to: user.email,
-        subject: "Reset your password",
+        subject: emailSubjects.resetPassword.en,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #1a1a1a;">Reset Your Password</h1>
@@ -118,7 +121,7 @@ export const auth = betterAuth({
             <a href="${url}" style="display: inline-block; background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0;">Reset Password</a>
             <p style="color: #999; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-            <p style="color: #999; font-size: 12px;">© ${new Date().getFullYear()} Farahty Invoice App</p>
+            <p style="color: #999; font-size: 12px;">© ${new Date().getFullYear()} Invoicy</p>
           </div>
         `,
       });

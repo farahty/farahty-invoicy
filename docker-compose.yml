@@ -1,0 +1,19 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - DATABASE_URL=${DATABASE_URL}
+        - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+        - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+        - RESEND_API_KEY=${RESEND_API_KEY}
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+    restart: unless-stopped

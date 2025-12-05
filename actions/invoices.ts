@@ -15,10 +15,8 @@ import { eq, and, desc, ilike, or, sql, inArray } from "drizzle-orm";
 import { requireOrgAuth } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { Resend } from "resend";
+import { sendEmail, emailSubjects } from "@/lib/email";
 import { logActivity } from "./activity";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const invoiceItemSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -519,8 +517,6 @@ export async function sendInvoiceEmail(invoiceId: string, locale?: string) {
   // Email translations
   const translations = {
     en: {
-      subject: (invoiceNumber: string, companyName: string) =>
-        `Invoice ${invoiceNumber} from ${companyName}`,
       greeting: (clientName: string) => `Dear ${clientName},`,
       intro: (amount: string) =>
         `Please find your invoice for the amount of <strong>${amount}</strong>.`,
@@ -530,8 +526,6 @@ export async function sendInvoiceEmail(invoiceId: string, locale?: string) {
       thankYou: "Thank you for your business!",
     },
     ar: {
-      subject: (invoiceNumber: string, companyName: string) =>
-        `فاتورة ${invoiceNumber} من ${companyName}`,
       greeting: (clientName: string) => `عزيزي ${clientName}،`,
       intro: (amount: string) =>
         `يرجى الاطلاع على فاتورتك بمبلغ <strong>${amount}</strong>.`,
@@ -597,10 +591,19 @@ export async function sendInvoiceEmail(invoiceId: string, locale?: string) {
 
   // Send email
   try {
-    await resend.emails.send({
-      from: process.env.DEFAULT_FROM_EMAIL || "no-reply@farahty.com",
+    // Get subject based on locale
+    const subject =
+      locale === "ar"
+        ? emailSubjects.invoice.ar(invoice.invoiceNumber, companyName)
+        : emailSubjects.invoice.en(invoice.invoiceNumber, companyName);
+
+    await sendEmail({
       to: invoice.client.email,
-      subject: t.subject(invoice.invoiceNumber, companyName),
+      subject,
+      senderInfo: {
+        organizationName: org?.name,
+        organizationSlug: org?.slug,
+      },
       html: `
         <div dir="${direction}" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; direction: ${direction};">
           <div style="text-align: center; margin-bottom: 30px;">

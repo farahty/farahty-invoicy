@@ -122,7 +122,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
           </Card>
 
           {/* Mobile Card List */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden gap-4 flex flex-col">
             {clients.map((client) => (
               <Link key={client.id} href={`/clients/${client.id}`}>
                 <Card className="hover:bg-accent transition-colors">
