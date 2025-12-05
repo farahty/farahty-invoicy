@@ -5,7 +5,6 @@ import {
   DollarSign,
   Clock,
   AlertTriangle,
-  FileText,
   Users,
   CircleDashed,
 } from "lucide-react";

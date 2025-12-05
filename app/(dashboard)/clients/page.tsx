@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { getClients } from "@/actions/clients";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Plus, Users, Search, Phone, Mail, MapPin } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Plus, Users, Phone, Mail, MapPin } from "lucide-react";
 import { ClientSearch } from "@/components/clients/client-search";
 import { ClientActions } from "@/components/clients/client-actions";
 import { getTranslations } from "next-intl/server";
@@ -66,7 +65,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       ) : (
         <>
           {/* Desktop Table */}
-          <Card className="hidden md:block">
+          <Card className="hidden md:block pt-0 overflow-hidden">
             <CardContent className="p-0">
               <table className="w-full">
                 <thead>

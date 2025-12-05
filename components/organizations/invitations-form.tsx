@@ -49,10 +49,7 @@ interface InvitationsFormProps {
   organizationId: string;
 }
 
-export function InvitationsForm({
-  pendingInvitations,
-  organizationId,
-}: InvitationsFormProps) {
+export function InvitationsForm({ pendingInvitations }: InvitationsFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const router = useRouter();

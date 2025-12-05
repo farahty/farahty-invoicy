@@ -1,13 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import {
-  payments,
-  invoices,
-  clients,
-  Payment,
-  PaymentMethod,
-} from "@/db/schema";
+import { payments, invoices, clients, PaymentMethod } from "@/db/schema";
 import { eq, sql, desc, and, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireOrgAuth } from "@/lib/session";

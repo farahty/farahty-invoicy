@@ -9,7 +9,7 @@ import {
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { desc, eq, and, or, gte, lte, sql } from "drizzle-orm";
+import { desc, eq, and, gte, lte, sql } from "drizzle-orm";
 
 interface LogActivityParams {
   entityType: ActivityEntity;

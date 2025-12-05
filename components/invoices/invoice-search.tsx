@@ -35,7 +35,11 @@ export function InvoiceSearch({ defaultValue }: InvoiceSearchProps) {
 
   return (
     <div className="relative">
-      <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Search
+        className={`absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground ${
+          isPending ? "animate-pulse" : ""
+        }`}
+      />
       <Input
         type="search"
         placeholder={t("searchPlaceholder")}

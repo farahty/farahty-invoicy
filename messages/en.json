@@ -165,8 +165,11 @@
     "termsAndConditions": "Terms & Conditions",
     "placeholders": {
       "notes": "Notes to the client...",
-      "terms": "Payment terms, late fees, etc..."
-    }
+      "terms": "Payment terms, late fees, etc...",
+      "typeToSearch": "Type to search or add new..."
+    },
+    "suggestions": "Suggestions",
+    "enterToSelect": "Enter to select"
   },
   "payments": {
     "title": "Payments",

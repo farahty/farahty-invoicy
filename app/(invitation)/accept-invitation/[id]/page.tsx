@@ -71,7 +71,7 @@ export default function AcceptInvitationPage({
   }, [invitationId]);
 
   const handleAccept = async () => {
-    if (!invitationId) return;
+    if (!invitationId || !invitation) return;
 
     setIsAccepting(true);
     try {
@@ -83,6 +83,11 @@ export default function AcceptInvitationPage({
         setError(result.error.message || t("invitationExpired"));
         return;
       }
+
+      // Set the accepted organization as active
+      await organization.setActive({
+        organizationId: invitation.organization.id,
+      });
 
       toast.success(t("invitationAccepted"));
       router.push("/dashboard");

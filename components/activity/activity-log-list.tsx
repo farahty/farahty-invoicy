@@ -87,10 +87,10 @@ export function ActivityLogList({
         return (
           <div
             key={log.id}
-            className="flex gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+            className="flex gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors items-start"
           >
             {/* Action Icon */}
-            <div className={cn("p-2 rounded-full shrink-0", actionColor)}>
+            <div className={cn("p-2 rounded-full shrink-0 ", actionColor)}>
               <ActionIcon className="h-4 w-4" />
             </div>
 

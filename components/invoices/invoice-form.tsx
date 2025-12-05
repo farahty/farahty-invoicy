@@ -247,6 +247,7 @@ export function InvoiceForm({
                         <InvoiceItemDescriptionField
                           control={form.control}
                           index={index}
+                          t={t}
                         />
                       </td>
                       <td className="py-2 px-2">
@@ -350,6 +351,7 @@ export function InvoiceForm({
                     control={form.control}
                     index={index}
                     label={t("description")}
+                    t={t}
                   />
 
                   <div className="grid grid-cols-2 gap-3">
@@ -551,22 +553,24 @@ function InvoiceItemDescriptionField({
   control,
   index,
   label,
+  t,
 }: {
   control: ReturnType<typeof useForm<InvoiceFormValues>>["control"];
   index: number;
   label?: string;
+  t: ReturnType<typeof useTranslations<"invoices">>;
 }) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const [hasFetched, setHasFetched] = useState(false);
 
   const fetchSuggestions = useCallback(async (q: string) => {
     try {
       const results = await getItemSuggestions(q);
       setSuggestions(results);
-      setHasFetched(true);
+      // Reset highlighted index when new suggestions arrive
+      setHighlightedIndex(-1);
     } catch {
       setSuggestions([]);
     }
@@ -580,11 +584,6 @@ function InvoiceItemDescriptionField({
     }, 150);
     return () => clearTimeout(timeout);
   }, [query, open, fetchSuggestions]);
-
-  // Reset highlighted index when suggestions change
-  useEffect(() => {
-    setHighlightedIndex(-1);
-  }, [suggestions]);
 
   return (
     <FormField
@@ -639,7 +638,7 @@ function InvoiceItemDescriptionField({
             {label && <FormLabel className="text-xs">{label}</FormLabel>}
             <FormControl>
               <Input
-                placeholder="Type to search or add new..."
+                placeholder={t("placeholders.typeToSearch")}
                 value={field.value}
                 onChange={(e) => {
                   field.onChange(e.target.value);
@@ -667,7 +666,7 @@ function InvoiceItemDescriptionField({
               <div className="absolute top-full left-0 z-100 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto min-w-[250px]">
                 <div className="py-1">
                   <p className="px-3 py-1.5 text-xs font-medium text-muted-foreground border-b border-border/50 mb-1">
-                    Suggestions
+                    {t("suggestions")}
                   </p>
                   {suggestions.map((suggestion, idx) => (
                     <button
@@ -690,7 +689,7 @@ function InvoiceItemDescriptionField({
                       <span className="flex-1 truncate">{suggestion}</span>
                       {highlightedIndex === idx && (
                         <span className="text-xs text-muted-foreground">
-                          Enter to select
+                          {t("enterToSelect")}
                         </span>
                       )}
                     </button>

@@ -108,13 +108,13 @@ async function migrate() {
     }
 
     // Update clients
-    const clientUpdateResult = await db
+    await db
       .update(clients)
       .set({ organizationId: orgId })
       .where(eq(clients.userId, userId));
 
     // Update invoices
-    const invoiceUpdateResult = await db
+    await db
       .update(invoices)
       .set({ organizationId: orgId })
       .where(eq(invoices.userId, userId));

@@ -165,8 +165,11 @@
     "termsAndConditions": "الشروط والأحكام",
     "placeholders": {
       "notes": "ملاحظات للعميل...",
-      "terms": "شروط الدفع، رسوم التأخير، إلخ..."
-    }
+      "terms": "شروط الدفع، رسوم التأخير، إلخ...",
+      "typeToSearch": "اكتب للبحث أو إضافة جديد..."
+    },
+    "suggestions": "اقتراحات",
+    "enterToSelect": "اضغط Enter للاختيار"
   },
   "payments": {
     "title": "المدفوعات",

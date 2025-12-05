@@ -5,13 +5,11 @@ import {
   invoices,
   invoiceItems,
   clients,
-  users,
   type NewInvoice,
-  type NewInvoiceItem,
   type InvoiceStatus,
 } from "@/db";
 import { organizations, payments } from "@/db/schema";
-import { eq, and, desc, ilike, or, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, ilike } from "drizzle-orm";
 import { requireOrgAuth } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";

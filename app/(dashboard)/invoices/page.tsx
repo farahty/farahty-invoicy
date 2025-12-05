@@ -98,7 +98,7 @@ export default async function InvoicesPage({
       ) : (
         <>
           {/* Desktop Table */}
-          <Card className="hidden md:block">
+          <Card className="hidden md:block pt-0 overflow-hidden">
             <CardContent className="p-0">
               <table className="w-full">
                 <thead>

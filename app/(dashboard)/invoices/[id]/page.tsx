@@ -7,16 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { EntityActivity } from "@/components/activity/entity-activity";
-import {
-  ArrowLeft,
-  Edit,
-  Mail,
-  Download,
-  CheckCircle,
-  Copy,
-} from "lucide-react";
+import { ArrowLeft, Edit, Download } from "lucide-react";
 import { format } from "date-fns";
-import { InvoiceActions } from "@/components/invoices/invoice-actions";
 import { InvoiceStatusActions } from "@/components/invoices/invoice-status-actions";
 import { RecordPaymentDialog } from "@/components/invoices/record-payment-dialog";
 import { PaymentHistory } from "@/components/invoices/payment-history";

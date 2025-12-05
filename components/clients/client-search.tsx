@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
 import { useState, useTransition, useEffect } from "react";
@@ -33,7 +33,11 @@ export function ClientSearch({ defaultValue }: ClientSearchProps) {
 
   return (
     <div className="relative">
-      <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Search
+        className={`absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground ${
+          isPending ? "animate-pulse" : ""
+        }`}
+      />
       <Input
         type="search"
         placeholder={t("searchPlaceholder")}

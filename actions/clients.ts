@@ -1,7 +1,7 @@
 "use server";
 
-import { db, clients, type NewClient, type Client } from "@/db";
-import { eq, and, desc, ilike, or, isNull } from "drizzle-orm";
+import { db, clients } from "@/db";
+import { eq, and, desc, ilike, or } from "drizzle-orm";
 import { requireOrgAuth } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
