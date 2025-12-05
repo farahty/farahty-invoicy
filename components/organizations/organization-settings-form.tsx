@@ -175,7 +175,7 @@ export function OrganizationSettingsForm({
         </div>
 
         {/* Invoice Settings */}
-        <div className="space-y-4">
+        <div className="space-y-4 text-start">
           <h3 className="text-lg font-medium">{t("invoiceSettings")}</h3>
           <p className="text-sm text-muted-foreground">
             {t("invoiceSettingsDescription")}
@@ -230,10 +230,12 @@ export function OrganizationSettingsForm({
           </div>
         </div>
 
-        <Button type="submit" disabled={isLoading}>
-          {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-          {t("saveChanges")}
-        </Button>
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isLoading}>
+            {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+            {t("saveChanges")}
+          </Button>
+        </div>
       </form>
     </Form>
   );

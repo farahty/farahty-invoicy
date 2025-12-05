@@ -293,6 +293,7 @@
     "switchError": "Failed to switch organization",
     "organizationSettings": "Organization Settings",
     "members": "Members",
+    "membersCount": "members",
     "invitations": "Invitations",
     "inviteMember": "Invite Member",
     "inviteDescription": "Send an invitation to join your organization",

@@ -153,7 +153,7 @@ export function MembersList({
                         )}
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" side="bottom">
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => handleRemoveMember(member)}

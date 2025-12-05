@@ -293,6 +293,7 @@
     "switchError": "فشل في التبديل إلى المنظمة",
     "organizationSettings": "إعدادات المنظمة",
     "members": "الأعضاء",
+    "membersCount": "أعضاء",
     "invitations": "الدعوات",
     "inviteMember": "دعوة عضو",
     "inviteDescription": "أرسل دعوة للانضمام إلى منظمتك",

@@ -227,11 +227,7 @@
   padding-right: 16rem;
 }
 
-/* RTL-aware flex direction for icons */
-[dir="rtl"] .flex-row-reverse {
-  flex-direction: row;
-}
-
+/* RTL-aware flex direction for icons with rotate */
 [dir="rtl"] .rotate-180 {
   transform: rotate(0deg);
 }

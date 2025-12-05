@@ -110,7 +110,7 @@ export function OrganizationSwitcher() {
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
                 <Building2 className="h-4 w-4" />
               </div>
-              <div className="flex flex-col items-start truncate">
+              <div className="flex flex-col text-start truncate">
                 <span className="truncate font-medium">
                   {activeOrg?.name || t("selectOrganization")}
                 </span>
@@ -128,7 +128,7 @@ export function OrganizationSwitcher() {
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[240px]">
+        <DropdownMenuContent align="start" className="w-60">
           <DropdownMenuLabel>{t("organizations")}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {orgList?.map((org) => (

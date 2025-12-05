@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getSettings } from "@/actions/settings";
+import { requireOrgAuth } from "@/lib/session";
+import { getTranslations } from "next-intl/server";
 import {
   Card,
   CardContent,
@@ -7,52 +8,110 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { SettingsForm } from "@/components/settings/settings-form";
-import { getTranslations } from "next-intl/server";
-import Link from "next/link";
-import { Building2, Settings } from "lucide-react";
+import { OrganizationSettingsForm } from "@/components/organizations/organization-settings-form";
+import { MembersList } from "@/components/organizations/members-list";
+import { InvitationsForm } from "@/components/organizations/invitations-form";
+import { db } from "@/db";
+import { organizations, members, invitations } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export default async function SettingsPage() {
-  const settings = await getSettings();
-  const t = await getTranslations("settings");
+  const { activeOrganization, user } = await requireOrgAuth();
+  const t = await getTranslations("organizations");
+  const tSettings = await getTranslations("settings");
 
-  if (!settings) {
-    redirect("/login");
+  if (!activeOrganization) {
+    redirect("/onboarding");
   }
+
+  // Get organization details
+  const org = await db.query.organizations.findFirst({
+    where: eq(organizations.id, activeOrganization.id),
+  });
+
+  if (!org) {
+    redirect("/onboarding");
+  }
+
+  // Get members
+  const orgMembers = await db.query.members.findMany({
+    where: eq(members.organizationId, activeOrganization.id),
+    with: {
+      user: true,
+    },
+  });
+
+  // Get pending invitations
+  const pendingInvitations = await db.query.invitations.findMany({
+    where: eq(invitations.organizationId, activeOrganization.id),
+  });
+
+  // Check if current user is owner/admin
+  const currentMember = orgMembers.find((m) => m.userId === user.id);
+  const isOwnerOrAdmin =
+    currentMember?.role === "owner" || currentMember?.role === "admin";
+
+  const settings = {
+    name: org.name,
+    slug: org.slug,
+    address: org.address,
+    phone: org.phone,
+    email: org.email,
+    taxId: org.taxId,
+    logoUrl: org.logo,
+    invoicePrefix: org.invoicePrefix,
+    invoiceNextNumber: org.invoiceNextNumber,
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-      </div>
+      <h1 className="text-2xl font-bold">{tSettings("title")}</h1>
 
-      {/* Settings Navigation Tabs */}
-      <div className="flex gap-2 border-b">
-        <Link
-          href="/settings"
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 border-primary text-primary"
-        >
-          <Settings className="h-4 w-4" />
-          {t("profile")}
-        </Link>
-        <Link
-          href="/settings/organization"
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-        >
-          <Building2 className="h-4 w-4" />
-          {t("organization")}
-        </Link>
-      </div>
-
+      {/* Organization Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>{t("profile")}</CardTitle>
-          <CardDescription>{t("business")}</CardDescription>
+          <CardTitle>{tSettings("companyInfo")}</CardTitle>
+          <CardDescription>
+            {tSettings("companyInfoDescription")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <SettingsForm settings={settings} />
+          <OrganizationSettingsForm settings={settings} />
         </CardContent>
       </Card>
+
+      {/* Members */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("members")}</CardTitle>
+          <CardDescription>
+            {orgMembers.length} {t("membersCount")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MembersList
+            members={orgMembers}
+            currentUserId={user.id}
+            isOwnerOrAdmin={isOwnerOrAdmin}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Invitations - Only for owners/admins */}
+      {isOwnerOrAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("inviteMember")}</CardTitle>
+            <CardDescription>{t("inviteDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <InvitationsForm
+              pendingInvitations={pendingInvitations}
+              organizationId={activeOrganization.id}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
