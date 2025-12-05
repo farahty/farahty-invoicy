@@ -15,8 +15,10 @@ interface RecentInvoicesProps {
 
 const statusStyles = {
   draft: "bg-muted text-muted-foreground hover:bg-muted",
-  sent: "bg-blue-100 text-blue-700 hover:bg-blue-100",
-  paid: "bg-green-100 text-green-700 hover:bg-green-100",
+  sent: "bg-status-info-bg text-status-info-foreground hover:bg-status-info-bg",
+  partial:
+    "bg-status-warning-bg text-status-warning-foreground hover:bg-status-warning-bg",
+  paid: "bg-status-success-bg text-status-success-foreground hover:bg-status-success-bg",
   overdue: "bg-destructive/10 text-destructive hover:bg-destructive/10",
   cancelled: "bg-muted text-muted-foreground hover:bg-muted",
 };

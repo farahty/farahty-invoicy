@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getInvoice } from "@/actions/invoices";
+import { getPaymentsByInvoice } from "@/actions/payments";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { EntityActivity } from "@/components/activity/entity-activity";
 import {
   ArrowLeft,
   Edit,
@@ -16,6 +18,8 @@ import {
 import { format } from "date-fns";
 import { InvoiceActions } from "@/components/invoices/invoice-actions";
 import { InvoiceStatusActions } from "@/components/invoices/invoice-status-actions";
+import { RecordPaymentDialog } from "@/components/invoices/record-payment-dialog";
+import { PaymentHistory } from "@/components/invoices/payment-history";
 import type { InvoiceStatus } from "@/db/schema";
 import { getTranslations } from "next-intl/server";
 
@@ -25,8 +29,9 @@ interface InvoiceDetailPageProps {
 
 const statusStyles: Record<InvoiceStatus, string> = {
   draft: "bg-muted text-muted-foreground",
-  sent: "bg-blue-100 text-blue-700",
-  paid: "bg-green-100 text-green-700",
+  sent: "bg-status-info-bg text-status-info-foreground",
+  partial: "bg-status-warning-bg text-status-warning-foreground",
+  paid: "bg-status-success-bg text-status-success-foreground",
   overdue: "bg-destructive/10 text-destructive",
   cancelled: "bg-muted text-muted-foreground",
 };
@@ -37,11 +42,14 @@ export default async function InvoiceDetailPage({
   const { id } = await params;
   const invoice = await getInvoice(id);
   const t = await getTranslations("invoices");
+  const tPayments = await getTranslations("payments");
   const tCommon = await getTranslations("common");
 
   if (!invoice) {
     notFound();
   }
+
+  const payments = await getPaymentsByInvoice(id);
 
   const formatCurrency = (amount: string | number) => {
     const value = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -51,6 +59,11 @@ export default async function InvoiceDetailPage({
     });
     return `${formatted} ₪`;
   };
+
+  const balanceDue = parseFloat(invoice.balanceDue);
+  const hasBalance = balanceDue > 0;
+  const canRecordPayment =
+    hasBalance && invoice.status !== "cancelled" && invoice.status !== "draft";
 
   return (
     <div className="space-y-6">
@@ -71,8 +84,7 @@ export default async function InvoiceDetailPage({
                 variant="secondary"
                 className={statusStyles[invoice.status]}
               >
-                {invoice.status.charAt(0).toUpperCase() +
-                  invoice.status.slice(1)}
+                {t(`statuses.${invoice.status}`)}
               </Badge>
             </div>
             <p className="text-muted-foreground">{invoice.client.name}</p>
@@ -208,6 +220,27 @@ export default async function InvoiceDetailPage({
                   <span>{t("total")}</span>
                   <span>{formatCurrency(invoice.total)}</span>
                 </div>
+                {parseFloat(invoice.amountPaid) > 0 && (
+                  <>
+                    <div className="flex justify-between text-status-success-foreground">
+                      <span>{tPayments("amountPaid")}</span>
+                      <span>-{formatCurrency(invoice.amountPaid)}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-lg font-bold text-foreground">
+                      <span>{tPayments("balanceDue")}</span>
+                      <span
+                        className={
+                          hasBalance
+                            ? "text-destructive"
+                            : "text-status-success-foreground"
+                        }
+                      >
+                        {formatCurrency(invoice.balanceDue)}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -263,54 +296,24 @@ export default async function InvoiceDetailPage({
             </CardContent>
           </Card>
 
-          {/* Timeline */}
+          {/* Payments */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">{t("activity")}</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-lg">{tPayments("title")}</CardTitle>
+              {canRecordPayment && (
+                <RecordPaymentDialog
+                  invoiceId={invoice.id}
+                  balanceDue={invoice.balanceDue}
+                />
+              )}
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-muted-foreground/50" />
-                  <div>
-                    <p className="text-sm text-foreground">{t("created")}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(
-                        new Date(invoice.createdAt),
-                        "MMM d, yyyy h:mm a"
-                      )}
-                    </p>
-                  </div>
-                </div>
-                {invoice.sentAt && (
-                  <div className="flex gap-3">
-                    <div className="w-2 h-2 mt-2 rounded-full bg-blue-500" />
-                    <div>
-                      <p className="text-sm text-foreground">
-                        {t("statuses.sent")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(invoice.sentAt), "MMM d, yyyy h:mm a")}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {invoice.paidAt && (
-                  <div className="flex gap-3">
-                    <div className="w-2 h-2 mt-2 rounded-full bg-green-500" />
-                    <div>
-                      <p className="text-sm text-foreground">
-                        {t("statuses.paid")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(invoice.paidAt), "MMM d, yyyy h:mm a")}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <PaymentHistory payments={payments} invoiceId={invoice.id} />
             </CardContent>
           </Card>
+
+          {/* Activity Log */}
+          <EntityActivity entityType="invoice" entityId={invoice.id} />
         </div>
       </div>
     </div>

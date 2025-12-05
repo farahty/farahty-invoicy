@@ -10,12 +10,13 @@ import {
   type NewInvoiceItem,
   type InvoiceStatus,
 } from "@/db";
-import { organizations } from "@/db/schema";
+import { organizations, payments } from "@/db/schema";
 import { eq, and, desc, ilike, or, sql, inArray } from "drizzle-orm";
 import { requireOrgAuth } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Resend } from "resend";
+import { logActivity } from "./activity";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -102,6 +103,9 @@ export async function getInvoice(id: string) {
       items: {
         orderBy: (items, { asc }) => [asc(items.sortOrder)],
       },
+      payments: {
+        orderBy: (payments, { desc }) => [desc(payments.paymentDate)],
+      },
     },
   });
 }
@@ -171,6 +175,8 @@ export async function createInvoice(data: InvoiceInput) {
       taxRate: validated.taxRate.toFixed(2),
       taxAmount: taxAmount.toFixed(2),
       total: total.toFixed(2),
+      amountPaid: "0",
+      balanceDue: total.toFixed(2),
       notes: validated.notes,
       terms: validated.terms,
       status: "draft",
@@ -201,6 +207,26 @@ export async function createInvoice(data: InvoiceInput) {
       invoiceNextNumber: currentNextNumber + 1,
     })
     .where(eq(organizations.id, activeOrganization.id));
+
+  // Log activity
+  await logActivity({
+    entityType: "invoice",
+    entityId: invoice.id,
+    entityName: invoice.invoiceNumber,
+    action: "created",
+    newValues: {
+      invoiceNumber: invoice.invoiceNumber,
+      clientId: validated.clientId,
+      total: total.toFixed(2),
+      itemCount: validated.items.length,
+    },
+    details: {
+      clientName: client.name,
+      subtotal: subtotal.toFixed(2),
+      taxRate: validated.taxRate,
+      taxAmount: taxAmount.toFixed(2),
+    },
+  });
 
   revalidatePath("/invoices");
   revalidatePath("/dashboard");
@@ -248,6 +274,18 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
   const taxAmount = (subtotal * validated.taxRate) / 100;
   const total = subtotal + taxAmount;
 
+  // Calculate new balance due (total - amount already paid)
+  const amountPaid = parseFloat(existing.amountPaid);
+  const newBalanceDue = total - amountPaid;
+
+  // Determine status based on payment
+  let newStatus = existing.status;
+  if (newBalanceDue <= 0 && amountPaid > 0) {
+    newStatus = "paid";
+  } else if (amountPaid > 0 && newBalanceDue > 0) {
+    newStatus = "partial";
+  }
+
   // Update invoice
   const [invoice] = await db
     .update(invoices)
@@ -259,6 +297,8 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
       taxRate: validated.taxRate.toFixed(2),
       taxAmount: taxAmount.toFixed(2),
       total: total.toFixed(2),
+      balanceDue: newBalanceDue.toFixed(2),
+      status: newStatus,
       notes: validated.notes,
       terms: validated.terms,
       updatedAt: new Date(),
@@ -280,6 +320,28 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
 
   await db.insert(invoiceItems).values(itemsToInsert);
 
+  // Log activity
+  await logActivity({
+    entityType: "invoice",
+    entityId: invoice.id,
+    entityName: invoice.invoiceNumber,
+    action: "updated",
+    previousValues: {
+      total: existing.total,
+      status: existing.status,
+      itemCount: "unknown", // We don't have previous items count easily
+    },
+    newValues: {
+      total: total.toFixed(2),
+      status: newStatus,
+      itemCount: validated.items.length,
+    },
+    details: {
+      totalChanged: existing.total !== total.toFixed(2),
+      statusChanged: existing.status !== newStatus,
+    },
+  });
+
   revalidatePath("/invoices");
   revalidatePath(`/invoices/${id}`);
   revalidatePath("/dashboard");
@@ -291,6 +353,14 @@ export async function updateInvoiceStatus(id: string, status: InvoiceStatus) {
 
   if (!activeOrganization) {
     return { success: false, error: "No active organization" };
+  }
+
+  // Prevent direct status change to "paid" - must be done via payments
+  if (status === "paid") {
+    return {
+      success: false,
+      error: "Invoice can only be marked as paid through payments",
+    };
   }
 
   // Verify ownership
@@ -305,6 +375,11 @@ export async function updateInvoiceStatus(id: string, status: InvoiceStatus) {
     return { success: false, error: "Invoice not found" };
   }
 
+  // Skip if status is already the same
+  if (existing.status === status) {
+    return { success: true };
+  }
+
   const updateData: Partial<NewInvoice> = {
     status,
     updatedAt: new Date(),
@@ -314,15 +389,48 @@ export async function updateInvoiceStatus(id: string, status: InvoiceStatus) {
     updateData.sentAt = new Date();
   }
 
-  if (status === "paid" && !existing.paidAt) {
-    updateData.paidAt = new Date();
+  // When cancelling an invoice, delete all payments and reset amounts
+  if (status === "cancelled") {
+    // Delete all payments for this invoice
+    await db.delete(payments).where(eq(payments.invoiceId, id));
+
+    // Reset payment amounts
+    updateData.amountPaid = "0";
+    updateData.balanceDue = existing.total;
+    updateData.paidAt = null;
   }
 
   await db.update(invoices).set(updateData).where(eq(invoices.id, id));
 
+  // Log activity
+  await logActivity({
+    entityType: "invoice",
+    entityId: id,
+    entityName: existing.invoiceNumber,
+    action: "status_changed",
+    previousValues: { status: existing.status },
+    newValues: { status },
+    details: {
+      fromStatus: existing.status,
+      toStatus: status,
+      paymentsDeleted: status === "cancelled",
+    },
+  });
+
+  // Update client balance if status changed
+  if (
+    status === "cancelled" ||
+    existing.status === "paid" ||
+    existing.status === "partial"
+  ) {
+    const { recalculateClientBalance } = await import("./payments");
+    await recalculateClientBalance(existing.clientId);
+  }
+
   revalidatePath("/invoices");
   revalidatePath(`/invoices/${id}`);
   revalidatePath("/dashboard");
+  revalidatePath("/clients");
   return { success: true };
 }
 
@@ -347,6 +455,20 @@ export async function deleteInvoice(id: string) {
 
   // Delete invoice (items will cascade)
   await db.delete(invoices).where(eq(invoices.id, id));
+
+  // Log activity
+  await logActivity({
+    entityType: "invoice",
+    entityId: id,
+    entityName: existing.invoiceNumber,
+    action: "deleted",
+    previousValues: {
+      invoiceNumber: existing.invoiceNumber,
+      clientId: existing.clientId,
+      total: existing.total,
+      status: existing.status,
+    },
+  });
 
   revalidatePath("/invoices");
   revalidatePath("/dashboard");
@@ -379,12 +501,49 @@ export async function getItemSuggestions(query: string) {
   return results.map((r) => r.description);
 }
 
-export async function sendInvoiceEmail(invoiceId: string) {
+export async function sendInvoiceEmail(invoiceId: string, locale?: string) {
   const { activeOrganization } = await requireOrgAuth();
 
   if (!activeOrganization) {
     return { success: false, error: "No active organization" };
   }
+
+  // Get locale from cookie if not provided
+  if (!locale) {
+    const { getLocale } = await import("./locale");
+    locale = await getLocale();
+  }
+
+  const isRTL = locale === "ar";
+
+  // Email translations
+  const translations = {
+    en: {
+      subject: (invoiceNumber: string, companyName: string) =>
+        `Invoice ${invoiceNumber} from ${companyName}`,
+      greeting: (clientName: string) => `Dear ${clientName},`,
+      intro: (amount: string) =>
+        `Please find your invoice for the amount of <strong>${amount}</strong>.`,
+      invoiceNumber: "Invoice Number",
+      dueDate: "Due Date",
+      amountDue: "Amount Due",
+      thankYou: "Thank you for your business!",
+    },
+    ar: {
+      subject: (invoiceNumber: string, companyName: string) =>
+        `فاتورة ${invoiceNumber} من ${companyName}`,
+      greeting: (clientName: string) => `عزيزي ${clientName}،`,
+      intro: (amount: string) =>
+        `يرجى الاطلاع على فاتورتك بمبلغ <strong>${amount}</strong>.`,
+      invoiceNumber: "رقم الفاتورة",
+      dueDate: "تاريخ الاستحقاق",
+      amountDue: "المبلغ المستحق",
+      thankYou: "شكراً لتعاملكم معنا!",
+    },
+  };
+
+  const t =
+    translations[locale as keyof typeof translations] || translations.en;
 
   const invoice = await db.query.invoices.findFirst({
     where: and(
@@ -422,70 +581,107 @@ export async function sendInvoiceEmail(invoiceId: string) {
     return `${formatted} ₪`;
   };
 
+  const formatDate = (date: Date | string) => {
+    const d = new Date(date);
+    return d.toLocaleDateString(locale === "ar" ? "ar-PS" : "en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  // RTL-aware styles
+  const direction = isRTL ? "rtl" : "ltr";
+  const textAlign = isRTL ? "right" : "left";
+  const textAlignOpposite = isRTL ? "left" : "right";
+
   // Send email
   try {
     await resend.emails.send({
       from: process.env.DEFAULT_FROM_EMAIL || "no-reply@farahty.com",
       to: invoice.client.email,
-      subject: `Invoice ${invoice.invoiceNumber} from ${companyName}`,
+      subject: t.subject(invoice.invoiceNumber, companyName),
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div dir="${direction}" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; direction: ${direction};">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #1a1a1a; margin: 0;">Invoice ${
+            <h1 style="color: #1a1a1a; margin: 0;">${companyName}</h1>
+            <p style="color: #666; margin-top: 8px;">${
               invoice.invoiceNumber
-            }</h1>
+            }</p>
           </div>
           
-          <p style="color: #666;">Dear ${invoice.client.name},</p>
+          <p style="color: #666; text-align: ${textAlign};">${t.greeting(
+        invoice.client.name
+      )}</p>
           
-          <p style="color: #666;">Please find attached your invoice for the amount of <strong>${formatCurrency(
-            invoice.total
-          )}</strong>.</p>
+          <p style="color: #666; text-align: ${textAlign};">${t.intro(
+        formatCurrency(invoice.total)
+      )}</p>
           
           <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
-                <td style="padding: 8px 0; color: #666;">Invoice Number:</td>
-                <td style="padding: 8px 0; text-align: right; font-weight: bold;">${
-                  invoice.invoiceNumber
-                }</td>
+                <td style="padding: 8px 0; color: #666; text-align: ${textAlign};">${
+        t.invoiceNumber
+      }</td>
+                <td style="padding: 8px 0; text-align: ${textAlignOpposite}; font-weight: bold;">${
+        invoice.invoiceNumber
+      }</td>
               </tr>
               <tr>
-                <td style="padding: 8px 0; color: #666;">Due Date:</td>
-                <td style="padding: 8px 0; text-align: right; font-weight: bold;">${new Date(
-                  invoice.dueDate
-                ).toLocaleDateString()}</td>
+                <td style="padding: 8px 0; color: #666; text-align: ${textAlign};">${
+        t.dueDate
+      }</td>
+                <td style="padding: 8px 0; text-align: ${textAlignOpposite}; font-weight: bold;">${formatDate(
+        invoice.dueDate
+      )}</td>
               </tr>
               <tr>
-                <td style="padding: 8px 0; color: #666;">Amount Due:</td>
-                <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #0f172a;">${formatCurrency(
-                  invoice.total
-                )}</td>
+                <td style="padding: 8px 0; color: #666; text-align: ${textAlign};">${
+        t.amountDue
+      }</td>
+                <td style="padding: 8px 0; text-align: ${textAlignOpposite}; font-weight: bold; color: #0f172a;">${formatCurrency(
+        invoice.balanceDue
+      )}</td>
               </tr>
             </table>
           </div>
           
           ${
             invoice.notes
-              ? `<p style="color: #666; font-style: italic;">${invoice.notes}</p>`
+              ? `<p style="color: #666; font-style: italic; text-align: ${textAlign};">${invoice.notes}</p>`
               : ""
           }
           
-          <p style="color: #666;">Thank you for your business!</p>
+          <p style="color: #666; text-align: ${textAlign};">${t.thankYou}</p>
           
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
           
           <p style="color: #999; font-size: 12px; text-align: center;">
             ${companyName}<br />
-            ${companyAddress}<br />
+            ${companyAddress ? `${companyAddress}<br />` : ""}
             ${companyEmail}
           </p>
         </div>
       `,
     });
 
-    // Update invoice status to sent
-    await updateInvoiceStatus(invoiceId, "sent");
+    // Update invoice status to sent only if it's a draft
+    if (invoice.status === "draft") {
+      await updateInvoiceStatus(invoiceId, "sent");
+    }
+
+    // Log activity
+    await logActivity({
+      entityType: "invoice",
+      entityId: invoiceId,
+      entityName: invoice.invoiceNumber,
+      action: "sent",
+      details: {
+        recipientEmail: invoice.client.email,
+        invoiceTotal: invoice.total,
+      },
+    });
 
     return { success: true };
   } catch (error) {

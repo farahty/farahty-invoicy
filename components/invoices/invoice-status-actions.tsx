@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Mail, Loader2 } from "lucide-react";
-import { updateInvoiceStatus, sendInvoiceEmail } from "@/actions/invoices";
+import { Mail, Loader2 } from "lucide-react";
+import { sendInvoiceEmail } from "@/actions/invoices";
 import { toast } from "sonner";
 import type { Invoice, Client, InvoiceItem } from "@/db/schema";
 import { useTranslations } from "next-intl";
@@ -15,28 +15,11 @@ interface InvoiceStatusActionsProps {
 
 export function InvoiceStatusActions({ invoice }: InvoiceStatusActionsProps) {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const t = useTranslations("invoices");
 
-  const handleMarkAsPaid = async () => {
-    setIsLoading("paid");
-    try {
-      const result = await updateInvoiceStatus(invoice.id, "paid");
-      if (result.success) {
-        toast.success(t("updated"));
-        router.refresh();
-      } else {
-        toast.error(result.error || "Failed to update status");
-      }
-    } catch {
-      toast.error("Something went wrong");
-    } finally {
-      setIsLoading(null);
-    }
-  };
-
   const handleSendEmail = async () => {
-    setIsLoading("send");
+    setIsLoading(true);
     try {
       const result = await sendInvoiceEmail(invoice.id);
       if (result.success) {
@@ -48,45 +31,32 @@ export function InvoiceStatusActions({ invoice }: InvoiceStatusActionsProps) {
     } catch {
       toast.error("Something went wrong");
     } finally {
-      setIsLoading(null);
+      setIsLoading(false);
     }
   };
 
-  if (invoice.status === "paid" || invoice.status === "cancelled") {
+  // Hide actions for paid/cancelled invoices or if client has no email
+  if (
+    invoice.status === "paid" ||
+    invoice.status === "cancelled" ||
+    !invoice.client.email
+  ) {
     return null;
   }
 
   return (
-    <div className="flex gap-2">
-      {invoice.client.email && (
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={handleSendEmail}
-          disabled={isLoading !== null}
-        >
-          {isLoading === "send" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Mail className="h-4 w-4" />
-          )}
-          <span className="hidden sm:inline">
-            {invoice.status === "draft" ? t("sendInvoice") : t("sendInvoice")}
-          </span>
-        </Button>
+    <Button
+      variant="outline"
+      className="gap-2"
+      onClick={handleSendEmail}
+      disabled={isLoading}
+    >
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <Mail className="h-4 w-4" />
       )}
-      <Button
-        className="gap-2"
-        onClick={handleMarkAsPaid}
-        disabled={isLoading !== null}
-      >
-        {isLoading === "paid" ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <CheckCircle className="h-4 w-4" />
-        )}
-        <span className="hidden sm:inline">{t("markAsPaid")}</span>
-      </Button>
-    </div>
+      <span className="hidden sm:inline">{t("sendInvoice")}</span>
+    </Button>
   );
 }

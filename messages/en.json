@@ -31,12 +31,17 @@
     "toggleTheme": "Toggle theme",
     "lightMode": "Light",
     "darkMode": "Dark",
-    "systemMode": "System"
+    "systemMode": "System",
+    "optional": "Optional",
+    "selectDate": "Select a date",
+    "notes": "Notes",
+    "amount": "Amount"
   },
   "nav": {
     "dashboard": "Dashboard",
     "invoices": "Invoices",
     "clients": "Clients",
+    "activity": "Activity",
     "settings": "Settings",
     "account": "Account",
     "menu": "Menu",
@@ -92,6 +97,7 @@
     "pendingAmount": "Pending Amount",
     "paidInvoices": "Paid Invoices",
     "overdueInvoices": "Overdue Invoices",
+    "partiallyPaid": "Partially Paid",
     "totalClients": "Total Clients",
     "thisMonth": "This month",
     "lastMonth": "Last month",
@@ -134,6 +140,7 @@
     "statuses": {
       "draft": "Draft",
       "sent": "Sent",
+      "partial": "Partially Paid",
       "paid": "Paid",
       "overdue": "Overdue",
       "cancelled": "Cancelled"
@@ -160,6 +167,33 @@
       "notes": "Notes to the client...",
       "terms": "Payment terms, late fees, etc..."
     }
+  },
+  "payments": {
+    "title": "Payments",
+    "recordPayment": "Record Payment",
+    "paymentHistory": "Payment History",
+    "amountPaid": "Amount Paid",
+    "balanceDue": "Balance Due",
+    "paymentDate": "Payment Date",
+    "paymentMethod": "Payment Method",
+    "reference": "Reference",
+    "paymentNotes": "Notes",
+    "amount": "Amount",
+    "methods": {
+      "cash": "Cash",
+      "card": "Card",
+      "bank_transfer": "Bank Transfer",
+      "check": "Check",
+      "other": "Other"
+    },
+    "recorded": "Payment recorded successfully",
+    "deleted": "Payment deleted successfully",
+    "noPayments": "No payments recorded",
+    "by": "by",
+    "deletePayment": "Delete Payment",
+    "deleteConfirm": "Are you sure you want to delete this payment?",
+    "exceedsBalance": "Payment amount cannot exceed balance due",
+    "invalidAmount": "Please enter a valid amount"
   },
   "clients": {
     "title": "Clients",
@@ -191,6 +225,8 @@
     "searchPlaceholder": "Search clients...",
     "totalInvoices": "Total Invoices",
     "totalSpent": "Total Spent",
+    "outstandingBalance": "Outstanding Balance",
+    "totalPaid": "Total Paid",
     "recentInvoices": "Recent Invoices",
     "viewAll": "View all",
     "noInvoicesYet": "No invoices yet",
@@ -335,5 +371,47 @@
     "cancelError": "Failed to cancel invitation",
     "declineError": "Failed to decline invitation",
     "cancel": "Cancel"
+  },
+  "activity": {
+    "title": "Activity Log",
+    "recentActivity": "Recent Activity",
+    "noActivity": "No activity recorded",
+    "viewAll": "View All Activity",
+    "filter": "Filter Activity",
+    "entityTypes": {
+      "client": "Client",
+      "invoice": "Invoice",
+      "payment": "Payment",
+      "organization": "Organization",
+      "member": "Member"
+    },
+    "actions": {
+      "created": "Created",
+      "updated": "Updated",
+      "deleted": "Deleted",
+      "status_changed": "Status Changed",
+      "sent": "Sent",
+      "payment_recorded": "Payment Recorded",
+      "payment_deleted": "Payment Deleted"
+    },
+    "descriptions": {
+      "client_created": "{user} created client {entity}",
+      "client_updated": "{user} updated client {entity}",
+      "client_deleted": "{user} deleted client {entity}",
+      "invoice_created": "{user} created invoice {entity}",
+      "invoice_updated": "{user} updated invoice {entity}",
+      "invoice_deleted": "{user} deleted invoice {entity}",
+      "invoice_status_changed": "{user} changed invoice {entity} status from {from} to {to}",
+      "invoice_sent": "{user} sent invoice {entity} via email",
+      "payment_recorded": "{user} recorded a payment of {amount} for invoice {invoice}",
+      "payment_deleted": "{user} deleted a payment from invoice {invoice}"
+    },
+    "details": "Details",
+    "previousValue": "Previous",
+    "newValue": "New",
+    "by": "by",
+    "on": "on",
+    "at": "at",
+    "changes": "Changes"
   }
 }

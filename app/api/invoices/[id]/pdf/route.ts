@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getInvoice } from "@/actions/invoices";
-import { db, users } from "@/db";
+import { db } from "@/db";
+import { organizations } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth } from "@/lib/session";
+import { requireOrgAuth } from "@/lib/session";
 import {
   InvoicePDF,
   arabicPDFTranslations,
@@ -16,8 +17,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await requireAuth();
+    const { activeOrganization } = await requireOrgAuth();
     const { id } = await params;
+
+    if (!activeOrganization) {
+      return new NextResponse("No active organization", { status: 403 });
+    }
 
     // Get locale from cookies
     const cookieStore = await cookies();
@@ -33,19 +38,20 @@ export async function GET(
       return new NextResponse("Invoice not found", { status: 404 });
     }
 
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, session.user.id),
+    // Get organization details
+    const organization = await db.query.organizations.findFirst({
+      where: eq(organizations.id, activeOrganization.id),
     });
 
-    if (!user) {
-      return new NextResponse("User not found", { status: 404 });
+    if (!organization) {
+      return new NextResponse("Organization not found", { status: 404 });
     }
 
     const pdfBuffer = await renderToBuffer(
       InvoicePDF({
         invoice,
         client: invoice.client,
-        user,
+        organization,
         translations,
         locale,
       })

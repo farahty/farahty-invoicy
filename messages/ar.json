@@ -31,12 +31,17 @@
     "toggleTheme": "تبديل المظهر",
     "lightMode": "فاتح",
     "darkMode": "داكن",
-    "systemMode": "تلقائي"
+    "systemMode": "تلقائي",
+    "optional": "اختياري",
+    "selectDate": "اختر تاريخ",
+    "notes": "ملاحظات",
+    "amount": "المبلغ"
   },
   "nav": {
     "dashboard": "لوحة التحكم",
     "invoices": "الفواتير",
     "clients": "العملاء",
+    "activity": "النشاط",
     "settings": "الإعدادات",
     "account": "الحساب",
     "menu": "القائمة",
@@ -92,6 +97,7 @@
     "pendingAmount": "المبلغ المعلق",
     "paidInvoices": "الفواتير المدفوعة",
     "overdueInvoices": "الفواتير المتأخرة",
+    "partiallyPaid": "مدفوعة جزئياً",
     "totalClients": "إجمالي العملاء",
     "thisMonth": "هذا الشهر",
     "lastMonth": "الشهر الماضي",
@@ -134,6 +140,7 @@
     "statuses": {
       "draft": "مسودة",
       "sent": "مرسلة",
+      "partial": "مدفوعة جزئياً",
       "paid": "مدفوعة",
       "overdue": "متأخرة",
       "cancelled": "ملغاة"
@@ -158,8 +165,35 @@
     "termsAndConditions": "الشروط والأحكام",
     "placeholders": {
       "notes": "ملاحظات للعميل...",
-      "terms": "شروط الدفع، الغرامات، إلخ..."
+      "terms": "شروط الدفع، رسوم التأخير، إلخ..."
     }
+  },
+  "payments": {
+    "title": "المدفوعات",
+    "recordPayment": "تسجيل دفعة",
+    "paymentHistory": "سجل المدفوعات",
+    "amountPaid": "المبلغ المدفوع",
+    "balanceDue": "الرصيد المستحق",
+    "paymentDate": "تاريخ الدفع",
+    "paymentMethod": "طريقة الدفع",
+    "reference": "المرجع",
+    "paymentNotes": "ملاحظات",
+    "amount": "المبلغ",
+    "methods": {
+      "cash": "نقدي",
+      "card": "بطاقة",
+      "bank_transfer": "تحويل بنكي",
+      "check": "شيك",
+      "other": "أخرى"
+    },
+    "recorded": "تم تسجيل الدفعة بنجاح",
+    "deleted": "تم حذف الدفعة بنجاح",
+    "noPayments": "لا توجد مدفوعات مسجلة",
+    "by": "بواسطة",
+    "deletePayment": "حذف الدفعة",
+    "deleteConfirm": "هل أنت متأكد من حذف هذه الدفعة؟",
+    "exceedsBalance": "لا يمكن أن يتجاوز مبلغ الدفع الرصيد المستحق",
+    "invalidAmount": "يرجى إدخال مبلغ صحيح"
   },
   "clients": {
     "title": "العملاء",
@@ -191,6 +225,8 @@
     "searchPlaceholder": "البحث في العملاء...",
     "totalInvoices": "إجمالي الفواتير",
     "totalSpent": "إجمالي المدفوعات",
+    "outstandingBalance": "الرصيد المستحق",
+    "totalPaid": "إجمالي المدفوع",
     "recentInvoices": "الفواتير الأخيرة",
     "viewAll": "عرض الكل",
     "noInvoicesYet": "لا توجد فواتير بعد",
@@ -335,5 +371,47 @@
     "cancelError": "فشل في إلغاء الدعوة",
     "declineError": "فشل في رفض الدعوة",
     "cancel": "إلغاء"
+  },
+  "activity": {
+    "title": "سجل النشاط",
+    "recentActivity": "النشاط الأخير",
+    "noActivity": "لا يوجد نشاط مسجل",
+    "viewAll": "عرض كل النشاط",
+    "filter": "تصفية النشاط",
+    "entityTypes": {
+      "client": "عميل",
+      "invoice": "فاتورة",
+      "payment": "دفعة",
+      "organization": "منظمة",
+      "member": "عضو"
+    },
+    "actions": {
+      "created": "إنشاء",
+      "updated": "تحديث",
+      "deleted": "حذف",
+      "status_changed": "تغيير الحالة",
+      "sent": "إرسال",
+      "payment_recorded": "تسجيل دفعة",
+      "payment_deleted": "حذف دفعة"
+    },
+    "descriptions": {
+      "client_created": "{user} أنشأ العميل {entity}",
+      "client_updated": "{user} حدّث العميل {entity}",
+      "client_deleted": "{user} حذف العميل {entity}",
+      "invoice_created": "{user} أنشأ الفاتورة {entity}",
+      "invoice_updated": "{user} حدّث الفاتورة {entity}",
+      "invoice_deleted": "{user} حذف الفاتورة {entity}",
+      "invoice_status_changed": "{user} غيّر حالة الفاتورة {entity} من {from} إلى {to}",
+      "invoice_sent": "{user} أرسل الفاتورة {entity} عبر البريد",
+      "payment_recorded": "{user} سجّل دفعة بقيمة {amount} للفاتورة {invoice}",
+      "payment_deleted": "{user} حذف دفعة من الفاتورة {invoice}"
+    },
+    "details": "التفاصيل",
+    "previousValue": "السابق",
+    "newValue": "الجديد",
+    "by": "بواسطة",
+    "on": "في",
+    "at": "الساعة",
+    "changes": "التغييرات"
   }
 }

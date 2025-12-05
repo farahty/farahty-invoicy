@@ -191,7 +191,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
                 onClick={() => handleStatusChange("paid")}
                 disabled={invoice.status === "paid"}
               >
-                <CheckCircle className="me-2 h-4 w-4 text-green-600" />
+                <CheckCircle className="me-2 h-4 w-4 text-status-success-foreground" />
                 {t("markAsPaid")}
               </DropdownMenuItem>
               <DropdownMenuItem

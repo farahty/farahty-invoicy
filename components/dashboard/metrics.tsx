@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   FileText,
   Users,
+  CircleDashed,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -15,6 +16,7 @@ interface DashboardMetricsProps {
     totalRevenue: number;
     pendingAmount: number;
     overdueCount: number;
+    partialCount: number;
     totalInvoices: number;
     totalClients: number;
   };
@@ -36,15 +38,25 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
       title: t("totalRevenue"),
       value: formatCurrency(metrics.totalRevenue),
       icon: DollarSign,
-      iconBg: "bg-green-100",
-      iconColor: "text-green-600",
+      iconBg: "bg-status-success-bg",
+      iconColor: "text-status-success-foreground",
     },
     {
       title: t("pendingAmount"),
       value: formatCurrency(metrics.pendingAmount),
       icon: Clock,
-      iconBg: "bg-amber-100",
-      iconColor: "text-amber-600",
+      iconBg: "bg-status-warning-bg",
+      iconColor: "text-status-warning-foreground",
+    },
+    {
+      title: t("partiallyPaid"),
+      value: metrics.partialCount.toString(),
+      icon: CircleDashed,
+      iconBg: "bg-status-warning-bg",
+      iconColor: "text-status-warning-foreground",
+      highlight: metrics.partialCount > 0,
+      highlightClass: "border-status-warning/50 bg-status-warning-bg/50",
+      textHighlight: "text-status-warning-foreground",
     },
     {
       title: t("overdueInvoices"),
@@ -53,20 +65,15 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
       iconBg: "bg-destructive/10",
       iconColor: "text-destructive",
       highlight: metrics.overdueCount > 0,
-    },
-    {
-      title: t("paidInvoices"),
-      value: metrics.totalInvoices.toString(),
-      icon: FileText,
-      iconBg: "bg-blue-100",
-      iconColor: "text-blue-600",
+      highlightClass: "border-destructive/50 bg-destructive/5",
+      textHighlight: "text-destructive",
     },
     {
       title: t("totalClients"),
       value: metrics.totalClients.toString(),
       icon: Users,
-      iconBg: "bg-purple-100",
-      iconColor: "text-purple-600",
+      iconBg: "bg-status-purple-bg",
+      iconColor: "text-status-purple-foreground",
     },
   ];
 
@@ -75,9 +82,7 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
       {cards.map((card) => (
         <Card
           key={card.title}
-          className={
-            card.highlight ? "border-destructive/50 bg-destructive/5" : ""
-          }
+          className={card.highlight ? card.highlightClass || "" : ""}
         >
           <CardContent className="p-4 md:p-6">
             <div className="flex items-start justify-between">
@@ -87,7 +92,9 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
                 </p>
                 <p
                   className={`text-lg md:text-2xl font-bold ${
-                    card.highlight ? "text-destructive" : "text-foreground"
+                    card.highlight
+                      ? card.textHighlight || "text-foreground"
+                      : "text-foreground"
                   }`}
                 >
                   {card.value}

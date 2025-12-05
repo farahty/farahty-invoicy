@@ -161,6 +161,10 @@ export const clients = pgTable(
     notes: text("notes"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    // Balance tracking
+    balance: decimal("balance", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
   },
   (table) => [
     index("clients_user_id_idx").on(table.userId),
@@ -172,11 +176,21 @@ export const clients = pgTable(
 export const invoiceStatusEnum = [
   "draft",
   "sent",
+  "partial",
   "paid",
   "overdue",
   "cancelled",
 ] as const;
 export type InvoiceStatus = (typeof invoiceStatusEnum)[number];
+
+export const paymentMethodEnum = [
+  "cash",
+  "card",
+  "bank_transfer",
+  "check",
+  "other",
+] as const;
+export type PaymentMethod = (typeof paymentMethodEnum)[number];
 
 export const invoices = pgTable(
   "invoices",
@@ -204,6 +218,13 @@ export const invoices = pgTable(
       .notNull()
       .default("0"),
     total: decimal("total", { precision: 12, scale: 2 }).notNull().default("0"),
+    // Payment tracking
+    amountPaid: decimal("amount_paid", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    balanceDue: decimal("balance_due", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
     status: text("status").$type<InvoiceStatus>().notNull().default("draft"),
     notes: text("notes"),
     terms: text("terms"),
@@ -240,6 +261,33 @@ export const invoiceItems = pgTable(
     sortOrder: integer("sort_order").notNull().default(0),
   },
   (table) => [index("invoice_items_invoice_id_idx").on(table.invoiceId)]
+);
+
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
+    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+    paymentDate: timestamp("payment_date").notNull().defaultNow(),
+    paymentMethod: text("payment_method")
+      .$type<PaymentMethod>()
+      .default("cash"),
+    reference: text("reference"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdBy: text("created_by").references(() => users.id),
+  },
+  (table) => [
+    index("payments_invoice_id_idx").on(table.invoiceId),
+    index("payments_organization_id_idx").on(table.organizationId),
+    index("payments_payment_date_idx").on(table.paymentDate),
+  ]
 );
 
 // ============================================
@@ -328,12 +376,99 @@ export const invoicesRelations = relations(invoices, ({ one, many }) => ({
     references: [clients.id],
   }),
   items: many(invoiceItems),
+  payments: many(payments),
 }));
 
 export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
   invoice: one(invoices, {
     fields: [invoiceItems.invoiceId],
     references: [invoices.id],
+  }),
+}));
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  invoice: one(invoices, {
+    fields: [payments.invoiceId],
+    references: [invoices.id],
+  }),
+  organization: one(organizations, {
+    fields: [payments.organizationId],
+    references: [organizations.id],
+  }),
+  createdByUser: one(users, {
+    fields: [payments.createdBy],
+    references: [users.id],
+  }),
+}));
+
+// ============================================
+// Activity Log / Audit Trail
+// ============================================
+
+export const activityActionEnum = [
+  "created",
+  "updated",
+  "deleted",
+  "status_changed",
+  "sent",
+  "payment_recorded",
+  "payment_deleted",
+] as const;
+export type ActivityAction = (typeof activityActionEnum)[number];
+
+export const activityEntityEnum = [
+  "client",
+  "invoice",
+  "payment",
+  "organization",
+  "member",
+] as const;
+export type ActivityEntity = (typeof activityEntityEnum)[number];
+
+export const activityLogs = pgTable(
+  "activity_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // What entity was affected
+    entityType: text("entity_type").$type<ActivityEntity>().notNull(),
+    entityId: text("entity_id").notNull(),
+    entityName: text("entity_name"), // Human readable name (client name, invoice number, etc.)
+    // What action was performed
+    action: text("action").$type<ActivityAction>().notNull(),
+    // Additional details as JSON
+    details: text("details"), // JSON string with action-specific details
+    // Previous values for tracking changes
+    previousValues: text("previous_values"), // JSON string
+    newValues: text("new_values"), // JSON string
+    // Metadata
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("activity_logs_organization_id_idx").on(table.organizationId),
+    index("activity_logs_user_id_idx").on(table.userId),
+    index("activity_logs_entity_type_idx").on(table.entityType),
+    index("activity_logs_entity_id_idx").on(table.entityId),
+    index("activity_logs_action_idx").on(table.action),
+    index("activity_logs_created_at_idx").on(table.createdAt),
+  ]
+);
+
+export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [activityLogs.organizationId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [activityLogs.userId],
+    references: [users.id],
   }),
 }));
 
@@ -362,7 +497,14 @@ export type NewInvoice = typeof invoices.$inferInsert;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
 export type NewInvoiceItem = typeof invoiceItems.$inferInsert;
 
+export type Payment = typeof payments.$inferSelect;
+export type NewPayment = typeof payments.$inferInsert;
+
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export type NewActivityLog = typeof activityLogs.$inferInsert;
+
 export type InvoiceWithRelations = Invoice & {
   client: Client;
   items: InvoiceItem[];
+  payments?: Payment[];
 };

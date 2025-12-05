@@ -4,6 +4,7 @@ import { getClient } from "@/actions/clients";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EntityActivity } from "@/components/activity/entity-activity";
 import {
   ArrowLeft,
   Edit,
@@ -12,6 +13,9 @@ import {
   MapPin,
   FileText,
   Plus,
+  Receipt,
+  CircleDollarSign,
+  AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { getTranslations } from "next-intl/server";
@@ -20,10 +24,11 @@ interface ClientDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-const statusStyles = {
+const statusStyles: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
-  sent: "bg-blue-100 text-blue-700",
-  paid: "bg-green-100 text-green-700",
+  sent: "bg-status-info-bg text-status-info-foreground",
+  partial: "bg-status-warning-bg text-status-warning-foreground",
+  paid: "bg-status-success-bg text-status-success-foreground",
   overdue: "bg-destructive/10 text-destructive",
   cancelled: "bg-muted text-muted-foreground",
 };
@@ -34,6 +39,7 @@ export default async function ClientDetailPage({
   const { id } = await params;
   const client = await getClient(id);
   const t = await getTranslations("clients");
+  const tInvoices = await getTranslations("invoices");
   const tCommon = await getTranslations("common");
 
   if (!client) {
@@ -48,6 +54,12 @@ export default async function ClientDetailPage({
     });
     return `${formatted} ₪`;
   };
+
+  // Calculate outstanding balance from invoice summary
+  const outstandingBalance =
+    (client.invoiceSummary?.totalAmount || 0) -
+    (client.invoiceSummary?.totalPaid || 0);
+  const hasOutstandingBalance = outstandingBalance > 0;
 
   return (
     <div className="space-y-6">
@@ -83,6 +95,70 @@ export default async function ClientDetailPage({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
+        {/* Summary Cards */}
+        <Card className="lg:col-span-3">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-center mb-2">
+                  <Receipt className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="text-2xl font-bold text-foreground">
+                  {client.invoiceSummary?.total || 0}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t("totalInvoices")}
+                </p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-center mb-2">
+                  <CircleDollarSign className="h-5 w-5 text-status-success-foreground" />
+                </div>
+                <p className="text-2xl font-bold text-status-success-foreground">
+                  {formatCurrency(client.invoiceSummary?.totalPaid || 0)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t("totalPaid")}
+                </p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-center mb-2">
+                  <AlertCircle
+                    className={`h-5 w-5 ${
+                      hasOutstandingBalance
+                        ? "text-status-warning-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  />
+                </div>
+                <p
+                  className={`text-2xl font-bold ${
+                    hasOutstandingBalance
+                      ? "text-status-warning-foreground"
+                      : "text-foreground"
+                  }`}
+                >
+                  {formatCurrency(outstandingBalance)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t("outstandingBalance")}
+                </p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-center mb-2">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="text-2xl font-bold text-foreground">
+                  {formatCurrency(client.invoiceSummary?.totalAmount || 0)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t("totalSpent")}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Client Info */}
         <Card className="lg:col-span-1">
           <CardHeader>
@@ -199,10 +275,9 @@ export default async function ClientDetailPage({
                         </span>
                         <Badge
                           variant="secondary"
-                          className={statusStyles[invoice.status]}
+                          className={statusStyles[invoice.status] || ""}
                         >
-                          {invoice.status.charAt(0).toUpperCase() +
-                            invoice.status.slice(1)}
+                          {tInvoices(`statuses.${invoice.status}`)}
                         </Badge>
                       </div>
                     </div>
@@ -212,6 +287,9 @@ export default async function ClientDetailPage({
             )}
           </CardContent>
         </Card>
+
+        {/* Activity Log */}
+        <EntityActivity entityType="client" entityId={client.id} />
       </div>
     </div>
   );

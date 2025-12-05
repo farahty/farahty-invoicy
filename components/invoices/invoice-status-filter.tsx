@@ -26,6 +26,7 @@ export function InvoiceStatusFilter({
     { value: "all", label: tCommon("all") },
     { value: "draft", label: t("statuses.draft") },
     { value: "sent", label: t("statuses.sent") },
+    { value: "partial", label: t("statuses.partial") },
     { value: "paid", label: t("statuses.paid") },
     { value: "overdue", label: t("statuses.overdue") },
     { value: "cancelled", label: t("statuses.cancelled") },

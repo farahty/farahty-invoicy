@@ -13,12 +13,13 @@ export default async function DashboardPage() {
 
   // Fetch dashboard data
   const [metricsData, recentInvoicesData, clientCount] = await Promise.all([
-    // Metrics: total revenue (paid), pending amount, overdue count
+    // Metrics: total revenue (paid + partial paid amounts), pending amount (balance due), overdue count
     db
       .select({
-        totalRevenue: sql<string>`COALESCE(SUM(CASE WHEN status = 'paid' THEN total ELSE 0 END), 0)`,
-        pendingAmount: sql<string>`COALESCE(SUM(CASE WHEN status IN ('sent', 'draft') THEN total ELSE 0 END), 0)`,
+        totalRevenue: sql<string>`COALESCE(SUM(amount_paid), 0)`,
+        pendingAmount: sql<string>`COALESCE(SUM(CASE WHEN status IN ('sent', 'partial', 'overdue') THEN balance_due ELSE 0 END), 0)`,
         overdueCount: sql<number>`COUNT(CASE WHEN status = 'overdue' THEN 1 END)`,
+        partialCount: sql<number>`COUNT(CASE WHEN status = 'partial' THEN 1 END)`,
         totalInvoices: sql<number>`COUNT(*)`,
       })
       .from(invoices)
@@ -45,6 +46,7 @@ export default async function DashboardPage() {
     totalRevenue: parseFloat(metricsData[0]?.totalRevenue || "0"),
     pendingAmount: parseFloat(metricsData[0]?.pendingAmount || "0"),
     overdueCount: metricsData[0]?.overdueCount || 0,
+    partialCount: metricsData[0]?.partialCount || 0,
     totalInvoices: metricsData[0]?.totalInvoices || 0,
     totalClients: clientCount[0]?.count || 0,
   };

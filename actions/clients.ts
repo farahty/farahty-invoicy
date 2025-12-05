@@ -5,6 +5,7 @@ import { eq, and, desc, ilike, or, isNull } from "drizzle-orm";
 import { requireOrgAuth } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { logActivity } from "./activity";
 
 const clientSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -52,7 +53,7 @@ export async function getClient(id: string) {
     return null;
   }
 
-  return db.query.clients.findFirst({
+  const client = await db.query.clients.findFirst({
     where: and(
       eq(clients.id, id),
       eq(clients.organizationId, activeOrganization.id)
@@ -60,10 +61,33 @@ export async function getClient(id: string) {
     with: {
       invoices: {
         orderBy: (invoices, { desc }) => [desc(invoices.createdAt)],
-        limit: 10,
       },
     },
   });
+
+  if (!client) return null;
+
+  // Calculate invoice summary
+  const invoiceSummary = {
+    total: client.invoices.length,
+    draft: client.invoices.filter((i) => i.status === "draft").length,
+    sent: client.invoices.filter((i) => i.status === "sent").length,
+    partial: client.invoices.filter((i) => i.status === "partial").length,
+    paid: client.invoices.filter((i) => i.status === "paid").length,
+    overdue: client.invoices.filter((i) => i.status === "overdue").length,
+    cancelled: client.invoices.filter((i) => i.status === "cancelled").length,
+    totalAmount: client.invoices
+      .filter((i) => i.status !== "cancelled")
+      .reduce((sum, i) => sum + parseFloat(i.total), 0),
+    totalPaid: client.invoices
+      .filter((i) => i.status !== "cancelled")
+      .reduce((sum, i) => sum + parseFloat(i.amountPaid), 0),
+  };
+
+  return {
+    ...client,
+    invoiceSummary,
+  };
 }
 
 export async function createClient(data: ClientInput) {
@@ -84,6 +108,15 @@ export async function createClient(data: ClientInput) {
       organizationId: activeOrganization.id,
     })
     .returning();
+
+  // Log activity
+  await logActivity({
+    entityType: "client",
+    entityId: client.id,
+    entityName: client.name,
+    action: "created",
+    newValues: validated,
+  });
 
   revalidatePath("/clients");
   return { success: true, client };
@@ -119,6 +152,32 @@ export async function updateClient(id: string, data: ClientInput) {
     })
     .where(eq(clients.id, id))
     .returning();
+
+  // Log activity with changes
+  const changes: Record<string, { from: unknown; to: unknown }> = {};
+  if (existing.name !== validated.name)
+    changes.name = { from: existing.name, to: validated.name };
+  if (existing.email !== (validated.email || null))
+    changes.email = { from: existing.email, to: validated.email };
+  if (existing.phone !== validated.phone)
+    changes.phone = { from: existing.phone, to: validated.phone };
+  if (existing.address !== validated.address)
+    changes.address = { from: existing.address, to: validated.address };
+
+  await logActivity({
+    entityType: "client",
+    entityId: client.id,
+    entityName: client.name,
+    action: "updated",
+    previousValues: {
+      name: existing.name,
+      email: existing.email,
+      phone: existing.phone,
+      address: existing.address,
+    },
+    newValues: validated,
+    details: { changes },
+  });
 
   revalidatePath("/clients");
   revalidatePath(`/clients/${id}`);
@@ -162,6 +221,19 @@ export async function deleteClient(id: string) {
   }
 
   await db.delete(clients).where(eq(clients.id, id));
+
+  // Log activity
+  await logActivity({
+    entityType: "client",
+    entityId: id,
+    entityName: existing.name,
+    action: "deleted",
+    previousValues: {
+      name: existing.name,
+      email: existing.email,
+      phone: existing.phone,
+    },
+  });
 
   revalidatePath("/clients");
   return { success: true };

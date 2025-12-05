@@ -13,6 +13,7 @@ import {
   Plus,
   ChevronRight,
   LucideIcon,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -206,6 +207,7 @@ export function Sidebar({ user, organizationName }: SidebarProps) {
     { name: t("nav.dashboard"), href: "/dashboard", icon: LayoutDashboard },
     { name: t("nav.invoices"), href: "/invoices", icon: FileText },
     { name: t("nav.clients"), href: "/clients", icon: Users },
+    { name: t("nav.activity"), href: "/activity", icon: History },
   ];
 
   const bottomNavigation: NavItem[] = [

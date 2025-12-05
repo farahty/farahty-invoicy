@@ -6,12 +6,25 @@ import {
   StyleSheet,
   Font,
 } from "@react-pdf/renderer";
-import type { Invoice, Client, InvoiceItem, User } from "@/db/schema";
+import type { Invoice, Client, InvoiceItem, Organization } from "@/db/schema";
 
 // Register Arabic font for RTL support
 Font.register({
   family: "Noto Sans Arabic",
-  src: "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-arabic@5.0.0/files/noto-sans-arabic-arabic-400-normal.woff",
+  fonts: [
+    {
+      src: "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-arabic@5.0.0/files/noto-sans-arabic-arabic-400-normal.woff",
+      fontWeight: 400,
+    },
+    {
+      src: "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-arabic@5.0.0/files/noto-sans-arabic-arabic-600-normal.woff",
+      fontWeight: 600,
+    },
+    {
+      src: "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-arabic@5.0.0/files/noto-sans-arabic-arabic-700-normal.woff",
+      fontWeight: 700,
+    },
+  ],
 });
 
 // Register Noto Sans Hebrew for shekel symbol support
@@ -20,11 +33,35 @@ Font.register({
   src: "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-hebrew@5.0.0/files/noto-sans-hebrew-hebrew-400-normal.woff",
 });
 
+// Register Inter for modern English typography
+Font.register({
+  family: "Inter",
+  fonts: [
+    {
+      src: "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/files/inter-latin-400-normal.woff",
+      fontWeight: 400,
+    },
+    {
+      src: "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/files/inter-latin-500-normal.woff",
+      fontWeight: 500,
+    },
+    {
+      src: "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/files/inter-latin-600-normal.woff",
+      fontWeight: 600,
+    },
+    {
+      src: "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/files/inter-latin-700-normal.woff",
+      fontWeight: 700,
+    },
+  ],
+});
+
 // PDF Translations type
 export interface PDFTranslations {
   invoice: string;
   invoiceNumber: string;
   billTo: string;
+  from: string;
   invoiceDate: string;
   dueDate: string;
   description: string;
@@ -34,272 +71,375 @@ export interface PDFTranslations {
   subtotal: string;
   tax: string;
   totalDue: string;
+  amountPaid: string;
+  balanceDue: string;
   notes: string;
   terms: string;
   taxId: string;
   thankYou: string;
   paid: string;
   overdue: string;
+  partial: string;
+  pageOf: string;
 }
 
 // Default English translations
 export const defaultPDFTranslations: PDFTranslations = {
   invoice: "INVOICE",
-  invoiceNumber: "Invoice Number",
+  invoiceNumber: "#",
   billTo: "Bill To",
-  invoiceDate: "Invoice Date",
-  dueDate: "Due Date",
+  from: "From",
+  invoiceDate: "Date",
+  dueDate: "Due",
   description: "Description",
   quantity: "Qty",
   rate: "Rate",
   amount: "Amount",
   subtotal: "Subtotal",
   tax: "Tax",
-  totalDue: "Total Due",
+  totalDue: "Total",
+  amountPaid: "Paid",
+  balanceDue: "Balance Due",
   notes: "Notes",
-  terms: "Terms & Conditions",
+  terms: "Terms",
   taxId: "Tax ID",
-  thankYou: "Thank you for your business!",
+  thankYou: "Thank you for your business",
   paid: "PAID",
   overdue: "OVERDUE",
+  partial: "PARTIAL",
+  pageOf: "Page 1 of 1",
 };
 
 // Arabic translations
 export const arabicPDFTranslations: PDFTranslations = {
   invoice: "فاتورة",
-  invoiceNumber: "رقم الفاتورة",
-  billTo: "فاتورة إلى",
-  invoiceDate: "تاريخ الفاتورة",
-  dueDate: "تاريخ الاستحقاق",
+  invoiceNumber: "#",
+  billTo: "إلى",
+  from: "من",
+  invoiceDate: "التاريخ",
+  dueDate: "الاستحقاق",
   description: "الوصف",
   quantity: "الكمية",
   rate: "السعر",
   amount: "المبلغ",
   subtotal: "المجموع الفرعي",
   tax: "الضريبة",
-  totalDue: "المجموع المستحق",
+  totalDue: "المجموع",
+  amountPaid: "المدفوع",
+  balanceDue: "الرصيد المستحق",
   notes: "ملاحظات",
-  terms: "الشروط والأحكام",
+  terms: "الشروط",
   taxId: "الرقم الضريبي",
-  thankYou: "شكراً لتعاملكم معنا!",
+  thankYou: "شكراً لتعاملكم معنا",
   paid: "مدفوعة",
   overdue: "متأخرة",
+  partial: "جزئية",
+  pageOf: "صفحة 1 من 1",
+};
+
+// Minimal color palette - grayscale focused
+const colors = {
+  black: "#111827",
+  dark: "#374151",
+  gray: "#6b7280",
+  grayLight: "#9ca3af",
+  border: "#e5e7eb",
+  bgLight: "#f9fafb",
+  white: "#ffffff",
 };
 
 const createStyles = (isRTL: boolean) =>
   StyleSheet.create({
     page: {
-      padding: 40,
-      fontSize: 10,
-      fontFamily: isRTL ? "Noto Sans Arabic" : "Helvetica",
-      color: "#1a1a1a",
+      padding: 32,
+      fontSize: 9,
+      fontFamily: isRTL ? "Noto Sans Arabic" : "Inter",
+      color: colors.dark,
       direction: isRTL ? "rtl" : "ltr",
+      backgroundColor: colors.white,
     },
+    // Header
     header: {
       flexDirection: isRTL ? "row-reverse" : "row",
       justifyContent: "space-between",
-      marginBottom: 40,
+      alignItems: "flex-start",
+      marginBottom: 24,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    brandSection: {
+      flexDirection: "column",
     },
     logo: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: "#0f172a",
+      fontSize: 16,
+      fontWeight: 700,
+      color: colors.black,
       textAlign: isRTL ? "right" : "left",
-    },
-    invoiceTitle: {
-      fontSize: 28,
-      fontWeight: "bold",
-      textAlign: isRTL ? "left" : "right",
-      color: "#0f172a",
-    },
-    invoiceNumber: {
-      fontSize: 12,
-      color: "#64748b",
-      textAlign: isRTL ? "left" : "right",
-      marginTop: 4,
-    },
-    section: {
-      marginBottom: 20,
-    },
-    row: {
-      flexDirection: isRTL ? "row-reverse" : "row",
-      justifyContent: "space-between",
-    },
-    column: {
-      width: "48%",
-    },
-    label: {
-      fontSize: 9,
-      color: "#64748b",
       marginBottom: 4,
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
+    },
+    brandContact: {
+      fontSize: 8,
+      color: colors.gray,
       textAlign: isRTL ? "right" : "left",
+      lineHeight: 1.4,
     },
-    value: {
-      fontSize: 11,
-      marginBottom: 2,
-      textAlign: isRTL ? "right" : "left",
-    },
-    companyName: {
-      fontSize: 14,
-      fontWeight: "bold",
-      marginBottom: 4,
-      textAlign: isRTL ? "right" : "left",
-    },
-    table: {
-      marginTop: 20,
-      marginBottom: 20,
-    },
-    tableHeader: {
-      flexDirection: isRTL ? "row-reverse" : "row",
-      backgroundColor: "#f8fafc",
-      padding: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: "#e2e8f0",
-    },
-    tableHeaderCell: {
-      fontSize: 9,
-      fontWeight: "bold",
-      color: "#64748b",
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
-    },
-    tableRow: {
-      flexDirection: isRTL ? "row-reverse" : "row",
-      padding: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: "#f1f5f9",
-    },
-    tableCell: {
-      fontSize: 10,
-    },
-    currencySymbol: {
-      fontFamily: "Noto Sans Hebrew",
-    },
-    descriptionCell: {
-      width: "45%",
-      textAlign: isRTL ? "right" : "left",
-    },
-    qtyCell: {
-      width: "15%",
-      textAlign: isRTL ? "left" : "right",
-    },
-    rateCell: {
-      width: "20%",
-      textAlign: isRTL ? "left" : "right",
-    },
-    amountCell: {
-      width: "20%",
-      textAlign: isRTL ? "left" : "right",
-    },
-    totals: {
-      marginTop: 20,
+    invoiceTitleSection: {
       alignItems: isRTL ? "flex-start" : "flex-end",
     },
-    totalRow: {
-      flexDirection: isRTL ? "row-reverse" : "row",
-      justifyContent: isRTL ? "flex-start" : "flex-end",
-      marginBottom: 6,
-    },
-    totalLabel: {
-      width: 100,
+    invoiceTitle: {
+      fontSize: 24,
+      fontWeight: 700,
       textAlign: isRTL ? "left" : "right",
-      paddingRight: isRTL ? 0 : 20,
-      paddingLeft: isRTL ? 20 : 0,
-      color: "#64748b",
+      color: colors.black,
+      letterSpacing: 1,
     },
-    totalValue: {
-      width: 100,
-      textAlign: isRTL ? "right" : "right",
-    },
-    grandTotal: {
-      flexDirection: isRTL ? "row-reverse" : "row",
-      justifyContent: isRTL ? "flex-start" : "flex-end",
-      marginTop: 10,
-      paddingTop: 10,
-      borderTopWidth: 2,
-      borderTopColor: "#e2e8f0",
-    },
-    grandTotalLabel: {
-      width: 100,
+    invoiceNumber: {
+      fontSize: 10,
+      color: colors.gray,
       textAlign: isRTL ? "left" : "right",
-      paddingRight: isRTL ? 0 : 20,
-      paddingLeft: isRTL ? 20 : 0,
-      fontSize: 14,
-      fontWeight: "bold",
-      color: "#0f172a",
+      marginTop: 2,
     },
-    grandTotalValue: {
-      width: 100,
-      textAlign: isRTL ? "right" : "right",
-      fontSize: 14,
-      fontWeight: "bold",
-      color: "#0f172a",
-    },
-    notes: {
-      marginTop: 30,
-      padding: 15,
-      backgroundColor: "#f8fafc",
-      borderRadius: 4,
-    },
-    notesTitle: {
-      fontSize: 10,
-      fontWeight: "bold",
-      marginBottom: 6,
-      color: "#64748b",
-      textAlign: isRTL ? "right" : "left",
-    },
-    notesText: {
-      fontSize: 10,
-      color: "#475569",
-      lineHeight: 1.5,
-      textAlign: isRTL ? "right" : "left",
-    },
-    footer: {
-      position: "absolute",
-      bottom: 30,
-      left: 40,
-      right: 40,
-      textAlign: "center",
-      color: "#94a3b8",
-      fontSize: 9,
-      borderTopWidth: 1,
-      borderTopColor: "#e2e8f0",
-      paddingTop: 15,
-    },
-    status: {
-      position: "absolute",
-      top: 60,
-      right: isRTL ? undefined : 40,
-      left: isRTL ? 40 : undefined,
-      padding: "6 12",
-      borderRadius: 4,
-      fontSize: 10,
-      fontWeight: "bold",
-      textTransform: "uppercase",
+    // Status badge - minimal
+    statusBadge: {
+      paddingVertical: 3,
+      paddingHorizontal: 8,
+      borderRadius: 3,
+      fontSize: 7,
+      fontWeight: 600,
+      letterSpacing: 0.5,
+      marginTop: 6,
     },
     statusPaid: {
       backgroundColor: "#dcfce7",
       color: "#166534",
     },
     statusOverdue: {
-      backgroundColor: "#fef2f2",
+      backgroundColor: "#fee2e2",
       color: "#991b1b",
+    },
+    statusPartial: {
+      backgroundColor: "#fef3c7",
+      color: "#92400e",
+    },
+    // Info section - compact two column
+    infoSection: {
+      flexDirection: isRTL ? "row-reverse" : "row",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    infoColumn: {
+      width: "48%",
+    },
+    infoBlock: {
+      marginBottom: 12,
+    },
+    infoLabel: {
+      fontSize: 7,
+      color: colors.grayLight,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: 3,
+      textAlign: isRTL ? "right" : "left",
+    },
+    infoTitle: {
+      fontSize: 10,
+      fontWeight: 600,
+      color: colors.black,
+      marginBottom: 2,
+      textAlign: isRTL ? "right" : "left",
+    },
+    infoText: {
+      fontSize: 8,
+      color: colors.gray,
+      textAlign: isRTL ? "right" : "left",
+      lineHeight: 1.3,
+    },
+    // Date row - inline compact
+    dateRow: {
+      flexDirection: isRTL ? "row-reverse" : "row",
+      gap: 16,
+      marginBottom: 3,
+    },
+    dateItem: {
+      flexDirection: isRTL ? "row-reverse" : "row",
+      gap: 4,
+    },
+    dateLabel: {
+      fontSize: 8,
+      color: colors.grayLight,
+    },
+    dateValue: {
+      fontSize: 8,
+      color: colors.dark,
+      fontWeight: 500,
+    },
+    // Items table - compact
+    table: {
+      marginBottom: 16,
+    },
+    tableHeader: {
+      flexDirection: isRTL ? "row-reverse" : "row",
+      borderBottomWidth: 1,
+      borderBottomColor: colors.black,
+      paddingBottom: 6,
+      marginBottom: 4,
+    },
+    tableHeaderCell: {
+      fontSize: 7,
+      fontWeight: 600,
+      color: colors.gray,
+      textTransform: "uppercase",
+      letterSpacing: 0.3,
+    },
+    tableRow: {
+      flexDirection: isRTL ? "row-reverse" : "row",
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    tableCell: {
+      fontSize: 9,
+      color: colors.dark,
+    },
+    tableCellDescription: {
+      fontWeight: 500,
+    },
+    currencySymbol: {
+      fontFamily: "Noto Sans Hebrew",
+    },
+    descriptionCell: {
+      width: "50%",
+      textAlign: isRTL ? "right" : "left",
+    },
+    qtyCell: {
+      width: "12%",
+      textAlign: "center",
+    },
+    rateCell: {
+      width: "19%",
+      textAlign: isRTL ? "left" : "right",
+    },
+    amountCell: {
+      width: "19%",
+      textAlign: isRTL ? "left" : "right",
+    },
+    // Totals - compact right aligned
+    totalsSection: {
+      flexDirection: isRTL ? "row-reverse" : "row",
+      justifyContent: isRTL ? "flex-start" : "flex-end",
+      marginBottom: 20,
+    },
+    totalsBox: {
+      width: 180,
+    },
+    totalRow: {
+      flexDirection: isRTL ? "row-reverse" : "row",
+      justifyContent: "space-between",
+      paddingVertical: 4,
+    },
+    totalLabel: {
+      fontSize: 8,
+      color: colors.gray,
+      textAlign: isRTL ? "right" : "left",
+    },
+    totalValue: {
+      fontSize: 8,
+      color: colors.dark,
+      textAlign: isRTL ? "left" : "right",
+    },
+    grandTotalRow: {
+      flexDirection: isRTL ? "row-reverse" : "row",
+      justifyContent: "space-between",
+      paddingVertical: 6,
+      borderTopWidth: 1,
+      borderTopColor: colors.black,
+      marginTop: 4,
+    },
+    grandTotalLabel: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: colors.black,
+      textAlign: isRTL ? "right" : "left",
+    },
+    grandTotalValue: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: colors.black,
+      textAlign: isRTL ? "left" : "right",
+    },
+    balanceDueRow: {
+      flexDirection: isRTL ? "row-reverse" : "row",
+      justifyContent: "space-between",
+      paddingVertical: 6,
+      backgroundColor: colors.bgLight,
+      marginTop: 4,
+      paddingHorizontal: 8,
+      marginHorizontal: -8,
+    },
+    balanceDueLabel: {
+      fontSize: 9,
+      fontWeight: 600,
+      color: colors.dark,
+      textAlign: isRTL ? "right" : "left",
+    },
+    balanceDueValue: {
+      fontSize: 9,
+      fontWeight: 700,
+      color: colors.black,
+      textAlign: isRTL ? "left" : "right",
+    },
+    // Notes - minimal
+    notesSection: {
+      marginBottom: 20,
+    },
+    notesBlock: {
+      marginBottom: 10,
+    },
+    notesTitle: {
+      fontSize: 7,
+      fontWeight: 600,
+      color: colors.grayLight,
+      textTransform: "uppercase",
+      letterSpacing: 0.3,
+      marginBottom: 4,
+      textAlign: isRTL ? "right" : "left",
+    },
+    notesText: {
+      fontSize: 8,
+      color: colors.gray,
+      lineHeight: 1.4,
+      textAlign: isRTL ? "right" : "left",
+    },
+    // Footer - simple line
+    footer: {
+      position: "absolute",
+      bottom: 24,
+      left: 32,
+      right: 32,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 12,
+      flexDirection: isRTL ? "row-reverse" : "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    footerText: {
+      fontSize: 8,
+      color: colors.grayLight,
     },
   });
 
 interface InvoicePDFProps {
   invoice: Invoice & { items: InvoiceItem[] };
   client: Client;
-  user: User;
+  organization: Organization;
   translations?: PDFTranslations;
   locale?: string;
 }
 
 const formatNumber = (amount: string | number) => {
   const value = typeof amount === "string" ? parseFloat(amount) : amount;
-  // Format number with commas and 2 decimal places using English numerals
   return value.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -310,27 +450,24 @@ const formatNumber = (amount: string | number) => {
 const Currency = ({
   amount,
   styles,
+  bold = false,
 }: {
   amount: string | number;
   styles: ReturnType<typeof createStyles>;
+  bold?: boolean;
 }) => (
-  <Text>
+  <Text style={bold ? { fontWeight: 700 } : {}}>
     {formatNumber(amount)} <Text style={styles.currencySymbol}>₪</Text>
   </Text>
 );
 
 const formatDate = (date: Date | string, locale: string = "en") => {
-  // Use English locale for numerals but localized month names
   const d = new Date(date);
   const day = d.getDate();
   const year = d.getFullYear();
-
-  // Get month name in the appropriate language
   const monthName = d.toLocaleDateString(locale === "ar" ? "ar-PS" : "en-US", {
-    month: "long",
+    month: "short",
   });
-
-  // Always use English numerals
   return locale === "ar"
     ? `${day} ${monthName} ${year}`
     : `${monthName} ${day}, ${year}`;
@@ -339,7 +476,7 @@ const formatDate = (date: Date | string, locale: string = "en") => {
 export function InvoicePDF({
   invoice,
   client,
-  user,
+  organization,
   translations = defaultPDFTranslations,
   locale = "en",
 }: InvoicePDFProps) {
@@ -347,80 +484,100 @@ export function InvoicePDF({
   const styles = createStyles(isRTL);
   const t = translations;
 
+  const amountPaid = parseFloat(invoice.amountPaid || "0");
+  const balanceDue = parseFloat(invoice.balanceDue || invoice.total);
+  const hasPayments = amountPaid > 0;
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Status Badge */}
-        {(invoice.status === "paid" || invoice.status === "overdue") && (
-          <View
-            style={[
-              styles.status,
-              invoice.status === "paid"
-                ? styles.statusPaid
-                : styles.statusOverdue,
-            ]}
-          >
-            <Text>{invoice.status === "paid" ? t.paid : t.overdue}</Text>
-          </View>
-        )}
-
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.logo}>{user.companyName || user.name}</Text>
-            {user.companyAddress && (
-              <Text style={styles.value}>{user.companyAddress}</Text>
-            )}
-            {user.companyPhone && (
-              <Text style={styles.value}>{user.companyPhone}</Text>
-            )}
-            {user.companyEmail && (
-              <Text style={styles.value}>{user.companyEmail}</Text>
-            )}
-            {user.taxId && (
-              <Text style={styles.value}>
-                {t.taxId}: {user.taxId}
+          <View style={styles.brandSection}>
+            <Text style={styles.logo}>{organization.name}</Text>
+            <Text style={styles.brandContact}>
+              {[organization.address, organization.phone, organization.email]
+                .filter(Boolean)
+                .join(" • ")}
+            </Text>
+            {organization.taxId && (
+              <Text style={styles.brandContact}>
+                {t.taxId}: {organization.taxId}
               </Text>
             )}
           </View>
-          <View>
+          <View style={styles.invoiceTitleSection}>
             <Text style={styles.invoiceTitle}>{t.invoice}</Text>
-            <Text style={styles.invoiceNumber}>{invoice.invoiceNumber}</Text>
+            <Text style={styles.invoiceNumber}>
+              {t.invoiceNumber}
+              {invoice.invoiceNumber}
+            </Text>
+            {/* Status Badge */}
+            {(invoice.status === "paid" ||
+              invoice.status === "overdue" ||
+              invoice.status === "partial") && (
+              <View
+                style={[
+                  styles.statusBadge,
+                  invoice.status === "paid"
+                    ? styles.statusPaid
+                    : invoice.status === "partial"
+                    ? styles.statusPartial
+                    : styles.statusOverdue,
+                ]}
+              >
+                <Text>
+                  {invoice.status === "paid"
+                    ? t.paid
+                    : invoice.status === "partial"
+                    ? t.partial
+                    : t.overdue}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
-        {/* Bill To & Invoice Info */}
-        <View style={styles.row}>
-          <View style={styles.column}>
-            <Text style={styles.label}>{t.billTo}</Text>
-            <Text style={styles.companyName}>{client.name}</Text>
-            {client.address && (
-              <Text style={styles.value}>{client.address}</Text>
-            )}
-            {(client.city || client.country) && (
-              <Text style={styles.value}>
-                {[client.city, client.country].filter(Boolean).join(", ")}
-              </Text>
-            )}
-            {client.email && <Text style={styles.value}>{client.email}</Text>}
-            {client.taxId && (
-              <Text style={styles.value}>
-                {t.taxId}: {client.taxId}
-              </Text>
-            )}
-          </View>
-          <View style={styles.column}>
-            <View style={{ marginBottom: 10 }}>
-              <Text style={styles.label}>{t.invoiceDate}</Text>
-              <Text style={styles.value}>
-                {formatDate(invoice.date, locale)}
-              </Text>
+        {/* Info Section */}
+        <View style={styles.infoSection}>
+          <View style={styles.infoColumn}>
+            <View style={styles.infoBlock}>
+              <Text style={styles.infoLabel}>{t.billTo}</Text>
+              <Text style={styles.infoTitle}>{client.name}</Text>
+              {client.address && (
+                <Text style={styles.infoText}>{client.address}</Text>
+              )}
+              {(client.city || client.country) && (
+                <Text style={styles.infoText}>
+                  {[client.city, client.country].filter(Boolean).join(", ")}
+                </Text>
+              )}
+              {client.email && (
+                <Text style={styles.infoText}>{client.email}</Text>
+              )}
+              {client.taxId && (
+                <Text style={styles.infoText}>
+                  {t.taxId}: {client.taxId}
+                </Text>
+              )}
             </View>
-            <View style={{ marginBottom: 10 }}>
-              <Text style={styles.label}>{t.dueDate}</Text>
-              <Text style={styles.value}>
-                {formatDate(invoice.dueDate, locale)}
-              </Text>
+          </View>
+          <View style={styles.infoColumn}>
+            <View style={styles.dateRow}>
+              <View style={styles.dateItem}>
+                <Text style={styles.dateLabel}>{t.invoiceDate}:</Text>
+                <Text style={styles.dateValue}>
+                  {formatDate(invoice.date, locale)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.dateRow}>
+              <View style={styles.dateItem}>
+                <Text style={styles.dateLabel}>{t.dueDate}:</Text>
+                <Text style={styles.dateValue}>
+                  {formatDate(invoice.dueDate, locale)}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -443,7 +600,13 @@ export function InvoicePDF({
           </View>
           {invoice.items.map((item) => (
             <View key={item.id} style={styles.tableRow}>
-              <Text style={[styles.tableCell, styles.descriptionCell]}>
+              <Text
+                style={[
+                  styles.tableCell,
+                  styles.descriptionCell,
+                  styles.tableCellDescription,
+                ]}
+              >
                 {item.description}
               </Text>
               <Text style={[styles.tableCell, styles.qtyCell]}>
@@ -460,42 +623,60 @@ export function InvoicePDF({
         </View>
 
         {/* Totals */}
-        <View style={styles.totals}>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>{t.subtotal}</Text>
-            <View style={styles.totalValue}>
-              <Currency amount={invoice.subtotal} styles={styles} />
-            </View>
-          </View>
-          {parseFloat(invoice.taxRate) > 0 && (
+        <View style={styles.totalsSection}>
+          <View style={styles.totalsBox}>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>
-                {t.tax} ({invoice.taxRate}%)
-              </Text>
+              <Text style={styles.totalLabel}>{t.subtotal}</Text>
               <View style={styles.totalValue}>
-                <Currency amount={invoice.taxAmount} styles={styles} />
+                <Currency amount={invoice.subtotal} styles={styles} />
               </View>
             </View>
-          )}
-          <View style={styles.grandTotal}>
-            <Text style={styles.grandTotalLabel}>{t.totalDue}</Text>
-            <View style={styles.grandTotalValue}>
-              <Currency amount={invoice.total} styles={styles} />
+            {parseFloat(invoice.taxRate) > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>
+                  {t.tax} ({invoice.taxRate}%)
+                </Text>
+                <View style={styles.totalValue}>
+                  <Currency amount={invoice.taxAmount} styles={styles} />
+                </View>
+              </View>
+            )}
+            <View style={styles.grandTotalRow}>
+              <Text style={styles.grandTotalLabel}>{t.totalDue}</Text>
+              <View style={styles.grandTotalValue}>
+                <Currency amount={invoice.total} styles={styles} bold />
+              </View>
             </View>
+            {hasPayments && (
+              <>
+                <View style={[styles.totalRow, { marginTop: 6 }]}>
+                  <Text style={styles.totalLabel}>{t.amountPaid}</Text>
+                  <View style={styles.totalValue}>
+                    <Currency amount={amountPaid} styles={styles} />
+                  </View>
+                </View>
+                <View style={styles.balanceDueRow}>
+                  <Text style={styles.balanceDueLabel}>{t.balanceDue}</Text>
+                  <View style={styles.balanceDueValue}>
+                    <Currency amount={balanceDue} styles={styles} bold />
+                  </View>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
-        {/* Notes */}
+        {/* Notes & Terms */}
         {(invoice.notes || invoice.terms) && (
-          <View style={styles.notes}>
+          <View style={styles.notesSection}>
             {invoice.notes && (
-              <View style={{ marginBottom: invoice.terms ? 12 : 0 }}>
+              <View style={styles.notesBlock}>
                 <Text style={styles.notesTitle}>{t.notes}</Text>
                 <Text style={styles.notesText}>{invoice.notes}</Text>
               </View>
             )}
             {invoice.terms && (
-              <View>
+              <View style={styles.notesBlock}>
                 <Text style={styles.notesTitle}>{t.terms}</Text>
                 <Text style={styles.notesText}>{invoice.terms}</Text>
               </View>
@@ -505,8 +686,9 @@ export function InvoicePDF({
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text>
-            {t.thankYou} | {user.companyEmail || user.email}
+          <Text style={styles.footerText}>{t.thankYou}</Text>
+          <Text style={styles.footerText}>
+            {organization.email || organization.phone || ""}
           </Text>
         </View>
       </Page>
