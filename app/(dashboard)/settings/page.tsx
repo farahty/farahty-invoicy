@@ -8,9 +8,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { SettingsForm } from "@/components/settings/settings-form";
+import { getTranslations } from "next-intl/server";
 
 export default async function SettingsPage() {
   const settings = await getSettings();
+  const t = await getTranslations("settings");
 
   if (!settings) {
     redirect("/login");
@@ -19,18 +21,13 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-600">
-          Manage your account and invoice settings
-        </p>
+        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Account Settings</CardTitle>
-          <CardDescription>
-            Update your personal and company information
-          </CardDescription>
+          <CardTitle>{t("profile")}</CardTitle>
+          <CardDescription>{t("business")}</CardDescription>
         </CardHeader>
         <CardContent>
           <SettingsForm settings={settings} />

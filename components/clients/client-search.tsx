@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
 import { useState, useTransition, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 interface ClientSearchProps {
   defaultValue?: string;
@@ -14,6 +15,7 @@ export function ClientSearch({ defaultValue }: ClientSearchProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState(defaultValue || "");
+  const t = useTranslations("clients");
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -31,19 +33,19 @@ export function ClientSearch({ defaultValue }: ClientSearchProps) {
 
   return (
     <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+      <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <Input
         type="search"
-        placeholder="Search clients..."
+        placeholder={t("searchPlaceholder")}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="pl-9 pr-9"
+        className="ps-9 pe-9"
       />
       {search && (
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+          className="absolute end-1 top-1/2 -translate-y-1/2 h-7 w-7"
           onClick={() => setSearch("")}
         >
           <X className="h-4 w-4" />

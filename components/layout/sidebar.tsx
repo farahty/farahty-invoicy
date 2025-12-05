@@ -26,13 +26,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { signOut } from "@/lib/auth-client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Invoices", href: "/invoices", icon: FileText },
-  { name: "Clients", href: "/clients", icon: Users },
-  { name: "Settings", href: "/settings", icon: Settings },
-];
+import { useTranslations } from "next-intl";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 interface SidebarProps {
   user: {
@@ -47,6 +42,14 @@ export function Sidebar({ user }: SidebarProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const t = useTranslations();
+
+  const navigation = [
+    { name: t("nav.dashboard"), href: "/dashboard", icon: LayoutDashboard },
+    { name: t("nav.invoices"), href: "/invoices", icon: FileText },
+    { name: t("nav.clients"), href: "/clients", icon: Users },
+    { name: t("nav.settings"), href: "/settings", icon: Settings },
+  ];
 
   useEffect(() => {
     setMounted(true);
@@ -77,8 +80,8 @@ export function Sidebar({ user }: SidebarProps) {
             className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
               isActive
-                ? "bg-slate-900 text-white"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
           >
             <item.icon className="h-5 w-5 shrink-0" />
@@ -92,13 +95,13 @@ export function Sidebar({ user }: SidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-slate-200">
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:start-0 bg-background border-e border-border">
         {/* Logo */}
-        <div className="flex items-center gap-2 h-16 px-6 border-b border-slate-200">
-          <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
-            <FileText className="w-4 h-4 text-white" />
+        <div className="flex items-center gap-2 h-16 px-6 border-b border-border">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <FileText className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-lg text-slate-900">Farahty</span>
+          <span className="font-semibold text-lg text-foreground">Farahty</span>
         </div>
 
         {/* Navigation */}
@@ -106,32 +109,37 @@ export function Sidebar({ user }: SidebarProps) {
           {renderNavLinks()}
         </nav>
 
+        {/* Language Switcher */}
+        <div className="px-4 py-2 border-t border-border">
+          <LanguageSwitcher />
+        </div>
+
         {/* Quick Actions */}
-        <div className="px-4 py-3 border-t border-slate-200">
+        <div className="px-4 py-3 border-t border-border">
           <Link href="/invoices/new">
             <Button className="w-full gap-2">
               <Plus className="h-4 w-4" />
-              New Invoice
+              {t("invoices.newInvoice")}
             </Button>
           </Link>
         </div>
 
         {/* User Menu */}
-        <div className="px-4 py-3 border-t border-slate-200">
+        <div className="px-4 py-3 border-t border-border">
           {mounted ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                <button className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-accent transition-colors">
                   <Avatar className="h-9 w-9">
-                    <AvatarFallback className="bg-slate-200 text-slate-700 text-sm">
+                    <AvatarFallback className="bg-muted text-muted-foreground text-sm">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 text-left min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {user.name}
                     </p>
-                    <p className="text-xs text-slate-500 truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {user.email}
                     </p>
                   </div>
@@ -140,32 +148,34 @@ export function Sidebar({ user }: SidebarProps) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem asChild>
                   <Link href="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                    <Settings className="me-2 h-4 w-4" />
+                    {t("nav.settings")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleSignOut}
-                  className="text-red-600"
+                  className="text-destructive"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
+                  <LogOut className="me-2 h-4 w-4" />
+                  {t("nav.signOut")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-3 w-full p-2">
               <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-slate-200 text-slate-700 text-sm">
+                <AvatarFallback className="bg-muted text-muted-foreground text-sm">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 text-left min-w-0">
-                <p className="text-sm font-medium text-slate-900 truncate">
+                <p className="text-sm font-medium text-foreground truncate">
                   {user.name}
                 </p>
-                <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user.email}
+                </p>
               </div>
             </div>
           )}
@@ -173,12 +183,12 @@ export function Sidebar({ user }: SidebarProps) {
       </aside>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-background border-b border-border flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
-            <FileText className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <FileText className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-lg text-slate-900">Farahty</span>
+          <span className="font-semibold text-lg text-foreground">Farahty</span>
         </div>
 
         {mounted ? (
@@ -192,8 +202,10 @@ export function Sidebar({ user }: SidebarProps) {
             <SheetContent side="right" className="w-72 p-0">
               <div className="flex flex-col h-full">
                 {/* Sheet Header */}
-                <div className="flex items-center justify-between h-14 px-4 border-b border-slate-200">
-                  <span className="font-semibold text-slate-900">Menu</span>
+                <div className="flex items-center justify-between h-14 px-4 border-b border-border">
+                  <span className="font-semibold text-foreground">
+                    {t("nav.menu")}
+                  </span>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -208,40 +220,45 @@ export function Sidebar({ user }: SidebarProps) {
                   {renderNavLinks()}
                 </nav>
 
+                {/* Language Switcher */}
+                <div className="px-3 py-2 border-t border-border">
+                  <LanguageSwitcher />
+                </div>
+
                 {/* Quick Actions */}
-                <div className="px-3 py-3 border-t border-slate-200">
+                <div className="px-3 py-3 border-t border-border">
                   <Link href="/invoices/new" onClick={() => setOpen(false)}>
                     <Button className="w-full gap-2">
                       <Plus className="h-4 w-4" />
-                      New Invoice
+                      {t("invoices.newInvoice")}
                     </Button>
                   </Link>
                 </div>
 
                 {/* User Menu */}
-                <div className="px-3 py-3 border-t border-slate-200">
+                <div className="px-3 py-3 border-t border-border">
                   <div className="flex items-center gap-3 p-2">
                     <Avatar className="h-9 w-9">
-                      <AvatarFallback className="bg-slate-200 text-slate-700 text-sm">
+                      <AvatarFallback className="bg-muted text-muted-foreground text-sm">
                         {initials}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {user.name}
                       </p>
-                      <p className="text-xs text-slate-500 truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {user.email}
                       </p>
                     </div>
                   </div>
                   <Button
                     variant="ghost"
-                    className="w-full justify-start mt-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="w-full justify-start mt-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={handleSignOut}
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign out
+                    <LogOut className="me-2 h-4 w-4" />
+                    {t("nav.signOut")}
                   </Button>
                 </div>
               </div>
@@ -256,7 +273,7 @@ export function Sidebar({ user }: SidebarProps) {
       </header>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 safe-area-bottom">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border safe-area-bottom">
         <div className="flex items-center justify-around h-16">
           {navigation.slice(0, 4).map((item) => {
             const isActive =
@@ -268,12 +285,12 @@ export function Sidebar({ user }: SidebarProps) {
                 className={cn(
                   "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
                   isActive
-                    ? "text-slate-900"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <item.icon
-                  className={cn("h-5 w-5", isActive && "text-slate-900")}
+                  className={cn("h-5 w-5", isActive && "text-foreground")}
                 />
                 <span className="text-[10px] font-medium">{item.name}</span>
               </Link>

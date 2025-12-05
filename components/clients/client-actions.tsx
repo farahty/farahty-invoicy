@@ -23,6 +23,7 @@ import {
 import { deleteClient } from "@/actions/clients";
 import { toast } from "sonner";
 import type { Client } from "@/db/schema";
+import { useTranslations } from "next-intl";
 
 interface ClientActionsProps {
   client: Client;
@@ -32,13 +33,15 @@ export function ClientActions({ client }: ClientActionsProps) {
   const router = useRouter();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const t = useTranslations("clients");
+  const tCommon = useTranslations("common");
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
       const result = await deleteClient(client.id);
       if (result.success) {
-        toast.success("Client deleted successfully");
+        toast.success(t("deleted"));
         setShowDeleteDialog(false);
         router.refresh();
       } else {
@@ -68,26 +71,26 @@ export function ClientActions({ client }: ClientActionsProps) {
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem asChild>
             <Link href={`/invoices/new?clientId=${client.id}`}>
-              <FileText className="mr-2 h-4 w-4" />
-              Create Invoice
+              <FileText className="me-2 h-4 w-4" />
+              {t("createInvoice")}
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href={`/clients/${client.id}/edit`}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
+              <Edit className="me-2 h-4 w-4" />
+              {tCommon("edit")}
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            className="text-red-600 focus:text-red-600"
+            className="text-destructive focus:text-destructive"
             onClick={(e) => {
               e.preventDefault();
               setShowDeleteDialog(true);
             }}
           >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+            <Trash2 className="me-2 h-4 w-4" />
+            {tCommon("delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -95,11 +98,8 @@ export function ClientActions({ client }: ClientActionsProps) {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Client</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &quot;{client.name}&quot;? This
-              action cannot be undone.
-            </DialogDescription>
+            <DialogTitle>{t("deleteClient")}</DialogTitle>
+            <DialogDescription>{t("deleteConfirm")}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
@@ -107,14 +107,14 @@ export function ClientActions({ client }: ClientActionsProps) {
               onClick={() => setShowDeleteDialog(false)}
               disabled={isDeleting}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? tCommon("loading") : tCommon("delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

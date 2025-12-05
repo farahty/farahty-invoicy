@@ -9,24 +9,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { InvoiceStatus } from "@/db/schema";
+import { useTranslations } from "next-intl";
 
 interface InvoiceStatusFilterProps {
   currentStatus?: InvoiceStatus;
 }
 
-const statuses: { value: string; label: string }[] = [
-  { value: "all", label: "All Statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "sent", label: "Sent" },
-  { value: "paid", label: "Paid" },
-  { value: "overdue", label: "Overdue" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
 export function InvoiceStatusFilter({
   currentStatus,
 }: InvoiceStatusFilterProps) {
   const router = useRouter();
+  const t = useTranslations("invoices");
+  const tCommon = useTranslations("common");
+
+  const statuses: { value: string; label: string }[] = [
+    { value: "all", label: tCommon("all") },
+    { value: "draft", label: t("statuses.draft") },
+    { value: "sent", label: t("statuses.sent") },
+    { value: "paid", label: t("statuses.paid") },
+    { value: "overdue", label: t("statuses.overdue") },
+    { value: "cancelled", label: t("statuses.cancelled") },
+  ];
 
   const handleChange = (value: string) => {
     const params = new URLSearchParams(window.location.search);
@@ -41,7 +44,7 @@ export function InvoiceStatusFilter({
   return (
     <Select value={currentStatus || "all"} onValueChange={handleChange}>
       <SelectTrigger className="w-full sm:w-40">
-        <SelectValue placeholder="Filter by status" />
+        <SelectValue placeholder={t("filterByStatus")} />
       </SelectTrigger>
       <SelectContent>
         {statuses.map((status) => (

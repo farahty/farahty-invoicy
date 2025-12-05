@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/form";
 import { Loader2, FileText, ArrowLeft, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -36,6 +37,7 @@ type ForgotPasswordForm = z.infer<typeof forgotPasswordSchema>;
 export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const t = useTranslations("auth");
 
   const form = useForm<ForgotPasswordForm>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -62,24 +64,22 @@ export default function ForgotPasswordPage() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center space-y-2">
             <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2">
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
             <CardTitle className="text-2xl font-bold">
-              Check your email
+              {t("checkYourEmail")}
             </CardTitle>
-            <CardDescription>
-              We&apos;ve sent a password reset link to your email address.
-            </CardDescription>
+            <CardDescription>{t("resetLinkSent")}</CardDescription>
           </CardHeader>
           <CardFooter className="flex flex-col gap-4">
             <Link href="/login" className="w-full">
               <Button variant="outline" className="w-full">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to login
+                <ArrowLeft className="me-2 h-4 w-4" />
+                {t("backToLogin")}
               </Button>
             </Link>
           </CardFooter>
@@ -89,16 +89,16 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center mb-2">
-            <FileText className="w-6 h-6 text-white" />
+          <div className="mx-auto w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-2">
+            <FileText className="w-6 h-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl font-bold">Forgot password?</CardTitle>
-          <CardDescription>
-            Enter your email and we&apos;ll send you a reset link
-          </CardDescription>
+          <CardTitle className="text-2xl font-bold">
+            {t("forgotPasswordTitle")}
+          </CardTitle>
+          <CardDescription>{t("forgotPasswordDescription")}</CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t("email")}</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
@@ -124,13 +124,13 @@ export default function ForgotPasswordPage() {
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Send reset link
+                {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                {t("sendResetLink")}
               </Button>
               <Link href="/login" className="w-full">
                 <Button variant="ghost" className="w-full">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to login
+                  <ArrowLeft className="me-2 h-4 w-4" />
+                  {t("backToLogin")}
                 </Button>
               </Link>
             </CardFooter>

@@ -4,6 +4,7 @@ import { getClient } from "@/actions/clients";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { ClientForm } from "@/components/clients/client-form";
+import { getTranslations } from "next-intl/server";
 
 interface EditClientPageProps {
   params: Promise<{ id: string }>;
@@ -12,6 +13,7 @@ interface EditClientPageProps {
 export default async function EditClientPage({ params }: EditClientPageProps) {
   const { id } = await params;
   const client = await getClient(id);
+  const t = await getTranslations("clients");
 
   if (!client) {
     notFound();
@@ -27,8 +29,10 @@ export default async function EditClientPage({ params }: EditClientPageProps) {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Edit Client</h1>
-          <p className="text-slate-600">{client.name}</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("editClient")}
+          </h1>
+          <p className="text-muted-foreground">{client.name}</p>
         </div>
       </div>
 

@@ -35,10 +35,11 @@ import {
 } from "@/actions/invoices";
 import type { Client, Invoice, InvoiceItem } from "@/db/schema";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 const invoiceItemSchema = z.object({
   description: z.string().min(1, "Description is required"),
-  quantity: z.number().min(0.01, "Quantity must be greater than 0"),
+  quantity: z.number().int().min(1, "Quantity must be at least 1"),
   rate: z.number().min(0, "Rate must be 0 or greater"),
 });
 
@@ -67,6 +68,8 @@ export function InvoiceForm({
 }: InvoiceFormProps) {
   const router = useRouter();
   const isEditing = !!invoice;
+  const t = useTranslations("invoices");
+  const tCommon = useTranslations("common");
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
@@ -83,7 +86,7 @@ export function InvoiceForm({
       terms: invoice?.terms || "",
       items: invoice?.items.map((item) => ({
         description: item.description,
-        quantity: parseFloat(item.quantity),
+        quantity: parseInt(item.quantity),
         rate: parseFloat(item.rate),
       })) || [{ description: "", quantity: 1, rate: 0 }],
     },
@@ -106,10 +109,11 @@ export function InvoiceForm({
   const total = subtotal + taxAmount;
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
+    const formatted = amount.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return `${formatted} ₪`;
   };
 
   const onSubmit = async (data: InvoiceFormValues) => {
@@ -123,7 +127,7 @@ export function InvoiceForm({
       if (isEditing) {
         const result = await updateInvoice(invoice.id, payload);
         if (result.success) {
-          toast.success("Invoice updated successfully");
+          toast.success(t("updated"));
           router.push(`/invoices/${invoice.id}`);
           router.refresh();
         } else {
@@ -132,7 +136,7 @@ export function InvoiceForm({
       } else {
         const result = await createInvoice(payload);
         if (result.success) {
-          toast.success("Invoice created successfully");
+          toast.success(t("created"));
           router.push(`/invoices/${result.invoice?.id}`);
           router.refresh();
         }
@@ -148,7 +152,7 @@ export function InvoiceForm({
         {/* Client & Dates */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Invoice Details</CardTitle>
+            <CardTitle className="text-lg">{t("invoiceDetails")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
@@ -156,14 +160,14 @@ export function InvoiceForm({
               name="clientId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Client *</FormLabel>
+                  <FormLabel>{t("client")} *</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a client" />
+                        <SelectValue placeholder={t("selectClient")} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -185,7 +189,7 @@ export function InvoiceForm({
                 name="date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Invoice Date *</FormLabel>
+                    <FormLabel>{t("invoiceDate")} *</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
@@ -198,7 +202,7 @@ export function InvoiceForm({
                 name="dueDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Due Date *</FormLabel>
+                    <FormLabel>{t("dueDate")} *</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
@@ -213,32 +217,32 @@ export function InvoiceForm({
         {/* Line Items */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Line Items</CardTitle>
+            <CardTitle className="text-lg">{t("lineItems")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Desktop Table View */}
             <div className="hidden md:block">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="text-left py-2 px-2 text-sm font-medium text-slate-500 w-[40%]">
-                      Description
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 px-2 text-sm font-medium text-muted-foreground w-[40%]">
+                      {t("description")}
                     </th>
-                    <th className="text-right py-2 px-2 text-sm font-medium text-slate-500 w-[15%]">
-                      Qty
+                    <th className="text-right py-2 px-2 text-sm font-medium text-muted-foreground w-[15%]">
+                      {t("quantity")}
                     </th>
-                    <th className="text-right py-2 px-2 text-sm font-medium text-slate-500 w-[20%]">
-                      Rate
+                    <th className="text-right py-2 px-2 text-sm font-medium text-muted-foreground w-[20%]">
+                      {t("rate")}
                     </th>
-                    <th className="text-right py-2 px-2 text-sm font-medium text-slate-500 w-[20%]">
-                      Amount
+                    <th className="text-right py-2 px-2 text-sm font-medium text-muted-foreground w-[20%]">
+                      {t("lineTotal")}
                     </th>
                     <th className="w-[5%]"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {fields.map((field, index) => (
-                    <tr key={field.id} className="border-b border-slate-100">
+                    <tr key={field.id} className="border-b border-border/50">
                       <td className="py-2 px-2 overflow-visible">
                         <InvoiceItemDescriptionField
                           control={form.control}
@@ -254,13 +258,13 @@ export function InvoiceForm({
                               <FormControl>
                                 <Input
                                   type="number"
-                                  step="0.01"
-                                  min="0.01"
+                                  step="1"
+                                  min="1"
                                   className="text-right"
                                   value={field.value}
                                   onChange={(e) =>
                                     field.onChange(
-                                      parseFloat(e.target.value) || 0
+                                      parseInt(e.target.value) || 1
                                     )
                                   }
                                 />
@@ -305,7 +309,7 @@ export function InvoiceForm({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-slate-400 hover:text-red-600"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
                             onClick={() => remove(index)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -323,18 +327,18 @@ export function InvoiceForm({
               {fields.map((field, index) => (
                 <div
                   key={field.id}
-                  className="border border-slate-200 rounded-lg p-4 space-y-3"
+                  className="border border-border rounded-lg p-4 space-y-3"
                 >
                   <div className="flex items-start justify-between">
-                    <span className="text-sm font-medium text-slate-500">
-                      Item {index + 1}
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {t("items")} {index + 1}
                     </span>
                     {fields.length > 1 && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-slate-400 hover:text-red-600 -mr-2 -mt-2"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive -mr-2 -mt-2"
                         onClick={() => remove(index)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -345,7 +349,7 @@ export function InvoiceForm({
                   <InvoiceItemDescriptionField
                     control={form.control}
                     index={index}
-                    label="Description"
+                    label={t("description")}
                   />
 
                   <div className="grid grid-cols-2 gap-3">
@@ -354,15 +358,17 @@ export function InvoiceForm({
                       name={`items.${index}.quantity`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">Quantity</FormLabel>
+                          <FormLabel className="text-xs">
+                            {t("quantity")}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               type="number"
-                              step="0.01"
-                              min="0.01"
+                              step="1"
+                              min="1"
                               value={field.value}
                               onChange={(e) =>
-                                field.onChange(parseFloat(e.target.value) || 0)
+                                field.onChange(parseInt(e.target.value) || 1)
                               }
                             />
                           </FormControl>
@@ -374,7 +380,7 @@ export function InvoiceForm({
                       name={`items.${index}.rate`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">Rate</FormLabel>
+                          <FormLabel className="text-xs">{t("rate")}</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -391,8 +397,10 @@ export function InvoiceForm({
                     />
                   </div>
 
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                    <span className="text-sm text-slate-500">Amount</span>
+                  <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                    <span className="text-sm text-muted-foreground">
+                      {t("lineTotal")}
+                    </span>
                     <span className="font-medium">
                       {formatCurrency(
                         (watchedItems[index]?.quantity || 0) *
@@ -411,25 +419,25 @@ export function InvoiceForm({
               onClick={() => append({ description: "", quantity: 1, rate: 0 })}
             >
               <Plus className="h-4 w-4" />
-              Add Item
+              {t("addItem")}
             </Button>
 
             {form.formState.errors.items?.root && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-destructive">
                 {form.formState.errors.items.root.message}
               </p>
             )}
 
             {/* Totals */}
-            <div className="pt-4 border-t border-slate-200">
+            <div className="pt-4 border-t border-border">
               <div className="flex justify-end">
                 <div className="w-full sm:w-64 space-y-3">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Subtotal</span>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>{t("subtotal")}</span>
                     <span>{formatCurrency(subtotal)}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-slate-600">Tax</span>
+                    <span className="text-muted-foreground">{t("tax")}</span>
                     <FormField
                       control={form.control}
                       name="taxRate"
@@ -450,7 +458,7 @@ export function InvoiceForm({
                                   )
                                 }
                               />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                                 %
                               </span>
                             </div>
@@ -463,8 +471,8 @@ export function InvoiceForm({
                     </span>
                   </div>
                   <Separator />
-                  <div className="flex justify-between text-lg font-bold text-slate-900">
-                    <span>Total</span>
+                  <div className="flex justify-between text-lg font-bold text-foreground">
+                    <span>{tCommon("total")}</span>
                     <span>{formatCurrency(total)}</span>
                   </div>
                 </div>
@@ -476,7 +484,7 @@ export function InvoiceForm({
         {/* Notes & Terms */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Additional Information</CardTitle>
+            <CardTitle className="text-lg">{t("additionalInfo")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
@@ -484,10 +492,10 @@ export function InvoiceForm({
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                  <FormLabel>{t("notes")}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Notes to the client..."
+                      placeholder={t("placeholders.notes")}
                       className="min-h-20"
                       {...field}
                     />
@@ -501,10 +509,10 @@ export function InvoiceForm({
               name="terms"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Terms & Conditions</FormLabel>
+                  <FormLabel>{t("termsAndConditions")}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Payment terms, late fees, etc..."
+                      placeholder={t("placeholders.terms")}
                       className="min-h-20"
                       {...field}
                     />
@@ -524,13 +532,13 @@ export function InvoiceForm({
             onClick={() => router.back()}
             disabled={form.formState.isSubmitting}
           >
-            Cancel
+            {tCommon("cancel")}
           </Button>
           <Button type="submit" disabled={form.formState.isSubmitting}>
             {form.formState.isSubmitting && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {isEditing ? "Update Invoice" : "Create Invoice"}
+            {isEditing ? t("updateInvoice") : t("createInvoice")}
           </Button>
         </div>
       </form>
@@ -656,9 +664,9 @@ function InvoiceItemDescriptionField({
               />
             </FormControl>
             {open && suggestions.length > 0 && (
-              <div className="absolute top-full left-0 z-100 mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-48 overflow-y-auto min-w-[250px]">
+              <div className="absolute top-full left-0 z-100 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto min-w-[250px]">
                 <div className="py-1">
-                  <p className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-100 mb-1">
+                  <p className="px-3 py-1.5 text-xs font-medium text-muted-foreground border-b border-border/50 mb-1">
                     Suggestions
                   </p>
                   {suggestions.map((suggestion, idx) => (
@@ -668,8 +676,8 @@ function InvoiceItemDescriptionField({
                       className={cn(
                         "w-full text-left px-3 py-2 text-sm cursor-pointer flex items-center gap-2",
                         highlightedIndex === idx
-                          ? "bg-slate-100 text-slate-900"
-                          : "hover:bg-slate-50 text-slate-700"
+                          ? "bg-accent text-accent-foreground"
+                          : "hover:bg-accent/50 text-popover-foreground"
                       )}
                       onMouseDown={(e) => {
                         e.preventDefault();
@@ -681,7 +689,7 @@ function InvoiceItemDescriptionField({
                     >
                       <span className="flex-1 truncate">{suggestion}</span>
                       {highlightedIndex === idx && (
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-muted-foreground">
                           Enter to select
                         </span>
                       )}

@@ -1,13 +1,15 @@
 import { db, invoices, clients } from "@/db";
-import { eq, desc, and, sql, lt } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { requireAuth } from "@/lib/session";
 import { DashboardMetrics } from "@/components/dashboard/metrics";
 import { RecentInvoices } from "@/components/dashboard/recent-invoices";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { getTranslations } from "next-intl/server";
 
 export default async function DashboardPage() {
   const session = await requireAuth();
   const userId = session.user.id;
+  const t = await getTranslations("dashboard");
 
   // Fetch dashboard data
   const [metricsData, recentInvoicesData, clientCount] = await Promise.all([
@@ -51,11 +53,11 @@ export default async function DashboardPage() {
     <div className="space-y-6 md:space-y-8">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-          Dashboard
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+          {t("title")}
         </h1>
-        <p className="text-slate-600 mt-1">
-          Welcome back, {session.user.name.split(" ")[0]}!
+        <p className="text-muted-foreground mt-1">
+          {t("welcome")}, {session.user.name.split(" ")[0]}!
         </p>
       </div>
 

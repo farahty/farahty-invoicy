@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getInvoice } from "@/actions/invoices";
 import { db, users } from "@/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/session";
-import { InvoicePDF } from "@/components/invoices/invoice-pdf";
+import {
+  InvoicePDF,
+  arabicPDFTranslations,
+  defaultPDFTranslations,
+} from "@/components/invoices/invoice-pdf";
 
 export async function GET(
   request: NextRequest,
@@ -13,6 +18,14 @@ export async function GET(
   try {
     const session = await requireAuth();
     const { id } = await params;
+
+    // Get locale from cookies
+    const cookieStore = await cookies();
+    const locale = cookieStore.get("locale")?.value || "ar";
+
+    // Get appropriate translations
+    const translations =
+      locale === "ar" ? arabicPDFTranslations : defaultPDFTranslations;
 
     const invoice = await getInvoice(id);
 
@@ -33,6 +46,8 @@ export async function GET(
         invoice,
         client: invoice.client,
         user,
+        translations,
+        locale,
       })
     );
 

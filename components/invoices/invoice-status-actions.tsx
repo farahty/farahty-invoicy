@@ -7,6 +7,7 @@ import { CheckCircle, Mail, Loader2 } from "lucide-react";
 import { updateInvoiceStatus, sendInvoiceEmail } from "@/actions/invoices";
 import { toast } from "sonner";
 import type { Invoice, Client, InvoiceItem } from "@/db/schema";
+import { useTranslations } from "next-intl";
 
 interface InvoiceStatusActionsProps {
   invoice: Invoice & { client: Client; items: InvoiceItem[] };
@@ -15,13 +16,14 @@ interface InvoiceStatusActionsProps {
 export function InvoiceStatusActions({ invoice }: InvoiceStatusActionsProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const t = useTranslations("invoices");
 
   const handleMarkAsPaid = async () => {
     setIsLoading("paid");
     try {
       const result = await updateInvoiceStatus(invoice.id, "paid");
       if (result.success) {
-        toast.success("Invoice marked as paid");
+        toast.success(t("updated"));
         router.refresh();
       } else {
         toast.error(result.error || "Failed to update status");
@@ -38,7 +40,7 @@ export function InvoiceStatusActions({ invoice }: InvoiceStatusActionsProps) {
     try {
       const result = await sendInvoiceEmail(invoice.id);
       if (result.success) {
-        toast.success("Invoice sent successfully");
+        toast.success(t("sent"));
         router.refresh();
       } else {
         toast.error(result.error || "Failed to send invoice");
@@ -69,7 +71,7 @@ export function InvoiceStatusActions({ invoice }: InvoiceStatusActionsProps) {
             <Mail className="h-4 w-4" />
           )}
           <span className="hidden sm:inline">
-            {invoice.status === "draft" ? "Send" : "Resend"}
+            {invoice.status === "draft" ? t("sendInvoice") : t("sendInvoice")}
           </span>
         </Button>
       )}
@@ -83,7 +85,7 @@ export function InvoiceStatusActions({ invoice }: InvoiceStatusActionsProps) {
         ) : (
           <CheckCircle className="h-4 w-4" />
         )}
-        <span className="hidden sm:inline">Mark as Paid</span>
+        <span className="hidden sm:inline">{t("markAsPaid")}</span>
       </Button>
     </div>
   );

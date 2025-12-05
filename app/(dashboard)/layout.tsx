@@ -1,5 +1,6 @@
 import { requireAuth } from "@/lib/session";
 import { Sidebar } from "@/components/layout/sidebar";
+import { getLocale } from "next-intl/server";
 
 export default async function DashboardLayout({
   children,
@@ -7,9 +8,11 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const session = await requireAuth();
+  const locale = await getLocale();
+  const isRtl = locale === "ar";
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <Sidebar
         user={{
           name: session.user.name,
@@ -19,7 +22,7 @@ export default async function DashboardLayout({
       />
 
       {/* Main Content */}
-      <main className="lg:pl-64">
+      <main className={isRtl ? "lg:pr-64" : "lg:pl-64"}>
         {/* Mobile top padding for header */}
         <div className="pt-14 lg:pt-0">
           {/* Mobile bottom padding for navigation */}

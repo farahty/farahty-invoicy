@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { InvoiceForm } from "@/components/invoices/invoice-form";
 import { getClients } from "@/actions/clients";
+import { getTranslations } from "next-intl/server";
 
 interface NewInvoicePageProps {
   searchParams: Promise<{ clientId?: string }>;
@@ -13,6 +14,7 @@ export default async function NewInvoicePage({
 }: NewInvoicePageProps) {
   const { clientId } = await searchParams;
   const clients = await getClients();
+  const t = await getTranslations("invoices");
 
   if (clients.length === 0) {
     return (
@@ -24,16 +26,16 @@ export default async function NewInvoicePage({
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">New Invoice</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {t("newInvoice")}
+            </h1>
           </div>
         </div>
 
         <div className="text-center py-12">
-          <p className="text-slate-600 mb-4">
-            You need to add a client before creating an invoice.
-          </p>
+          <p className="text-muted-foreground mb-4">{t("needClientFirst")}</p>
           <Link href="/clients/new">
-            <Button>Add your first client</Button>
+            <Button>{t("addFirstClient")}</Button>
           </Link>
         </div>
       </div>
@@ -49,8 +51,10 @@ export default async function NewInvoicePage({
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">New Invoice</h1>
-          <p className="text-slate-600">Create a new invoice</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("newInvoice")}
+          </h1>
+          <p className="text-muted-foreground">{t("createNew")}</p>
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Users, Search, Phone, Mail, MapPin } from "lucide-react";
 import { ClientSearch } from "@/components/clients/client-search";
 import { ClientActions } from "@/components/clients/client-actions";
+import { getTranslations } from "next-intl/server";
 
 interface ClientsPageProps {
   searchParams: Promise<{ search?: string }>;
@@ -14,21 +15,21 @@ interface ClientsPageProps {
 export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const { search } = await searchParams;
   const clients = await getClients(search);
+  const t = await getTranslations("clients");
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-            Clients
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+            {t("title")}
           </h1>
-          <p className="text-slate-600 mt-1">Manage your client information</p>
         </div>
         <Link href="/clients/new">
           <Button className="gap-2 w-full sm:w-auto">
             <Plus className="h-4 w-4" />
-            Add Client
+            {t("newClient")}
           </Button>
         </Link>
       </div>
@@ -40,25 +41,23 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       {clients.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-              <Users className="h-6 w-6 text-slate-400" />
+            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Users className="h-6 w-6 text-muted-foreground" />
             </div>
             {search ? (
               <>
-                <p className="text-slate-600 mb-2">
-                  No clients found for &quot;{search}&quot;
-                </p>
+                <p className="text-muted-foreground mb-2">{t("noClients")}</p>
                 <Link href="/clients">
-                  <Button variant="outline">Clear search</Button>
+                  <Button variant="outline">{t("searchPlaceholder")}</Button>
                 </Link>
               </>
             ) : (
               <>
-                <p className="text-slate-600 mb-4">
-                  You haven&apos;t added any clients yet
+                <p className="text-muted-foreground mb-4">
+                  {t("noClientsDescription")}
                 </p>
                 <Link href="/clients/new">
-                  <Button>Add your first client</Button>
+                  <Button>{t("newClient")}</Button>
                 </Link>
               </>
             )}
@@ -71,45 +70,43 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
             <CardContent className="p-0">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">
-                      Name
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="text-start py-3 px-4 text-sm font-medium text-muted-foreground">
+                      {t("name")}
                     </th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">
-                      Email
+                    <th className="text-start py-3 px-4 text-sm font-medium text-muted-foreground">
+                      {t("email")}
                     </th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">
-                      Phone
+                    <th className="text-start py-3 px-4 text-sm font-medium text-muted-foreground">
+                      {t("phone")}
                     </th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">
-                      Location
+                    <th className="text-start py-3 px-4 text-sm font-medium text-muted-foreground">
+                      {t("location")}
                     </th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">
-                      Actions
-                    </th>
+                    <th className="text-end py-3 px-4 text-sm font-medium text-muted-foreground"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {clients.map((client) => (
                     <tr
                       key={client.id}
-                      className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                      className="border-b border-border/50 last:border-0 hover:bg-accent"
                     >
                       <td className="py-3 px-4">
                         <Link
                           href={`/clients/${client.id}`}
-                          className="font-medium text-slate-900 hover:text-slate-600"
+                          className="font-medium text-foreground hover:text-muted-foreground"
                         >
                           {client.name}
                         </Link>
                       </td>
-                      <td className="py-3 px-4 text-slate-600">
+                      <td className="py-3 px-4 text-muted-foreground">
                         {client.email || "-"}
                       </td>
-                      <td className="py-3 px-4 text-slate-600">
+                      <td className="py-3 px-4 text-muted-foreground">
                         {client.phone || "-"}
                       </td>
-                      <td className="py-3 px-4 text-slate-600">
+                      <td className="py-3 px-4 text-muted-foreground">
                         {[client.city, client.country]
                           .filter(Boolean)
                           .join(", ") || "-"}
@@ -128,30 +125,30 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
           <div className="md:hidden space-y-3">
             {clients.map((client) => (
               <Link key={client.id} href={`/clients/${client.id}`}>
-                <Card className="hover:bg-slate-50 transition-colors">
+                <Card className="hover:bg-accent transition-colors">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-medium text-slate-900">
+                      <h3 className="font-medium text-foreground">
                         {client.name}
                       </h3>
                       <ClientActions client={client} />
                     </div>
-                    <div className="space-y-2 text-sm text-slate-600">
+                    <div className="space-y-2 text-sm text-muted-foreground">
                       {client.email && (
                         <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-slate-400" />
+                          <Mail className="h-4 w-4 text-muted-foreground" />
                           <span className="truncate">{client.email}</span>
                         </div>
                       )}
                       {client.phone && (
                         <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-slate-400" />
+                          <Phone className="h-4 w-4 text-muted-foreground" />
                           <span>{client.phone}</span>
                         </div>
                       )}
                       {(client.city || client.country) && (
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-slate-400" />
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
                           <span>
                             {[client.city, client.country]
                               .filter(Boolean)

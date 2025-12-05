@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { updateSettings, type UserSettings } from "@/actions/settings";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 const settingsSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -42,6 +43,7 @@ interface SettingsFormProps {
 
 export function SettingsForm({ settings }: SettingsFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const t = useTranslations("settings");
 
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
@@ -72,10 +74,10 @@ export function SettingsForm({ settings }: SettingsFormProps) {
       });
 
       if (result.success) {
-        toast.success("Settings updated successfully");
+        toast.success(t("saved"));
       }
     } catch {
-      toast.error("Failed to update settings");
+      toast.error(t("saveFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -86,15 +88,15 @@ export function SettingsForm({ settings }: SettingsFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         {/* Personal Information */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Personal Information</h3>
+          <h3 className="text-lg font-medium">{t("personalInfo")}</h3>
           <FormField
             control={form.control}
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Your Name</FormLabel>
+                <FormLabel>{t("yourName")}</FormLabel>
                 <FormControl>
-                  <Input placeholder="John Doe" {...field} />
+                  <Input placeholder={t("placeholders.name")} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -104,9 +106,9 @@ export function SettingsForm({ settings }: SettingsFormProps) {
 
         {/* Company Information */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Company Information</h3>
+          <h3 className="text-lg font-medium">{t("companyInfo")}</h3>
           <p className="text-sm text-muted-foreground">
-            This information will appear on your invoices
+            {t("companyInfoDescription")}
           </p>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -115,9 +117,12 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               name="companyName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Company Name</FormLabel>
+                  <FormLabel>{t("companyName")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Acme Inc." {...field} />
+                    <Input
+                      placeholder={t("placeholders.companyName")}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -129,11 +134,11 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               name="companyEmail"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Company Email</FormLabel>
+                  <FormLabel>{t("companyEmail")}</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
-                      placeholder="billing@company.com"
+                      placeholder={t("placeholders.companyEmail")}
                       {...field}
                     />
                   </FormControl>
@@ -148,10 +153,10 @@ export function SettingsForm({ settings }: SettingsFormProps) {
             name="companyAddress"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Company Address</FormLabel>
+                <FormLabel>{t("companyAddress")}</FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder="123 Main Street&#10;City, State 12345&#10;Country"
+                    placeholder={t("placeholders.companyAddress")}
                     rows={3}
                     {...field}
                   />
@@ -167,9 +172,9 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               name="companyPhone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone Number</FormLabel>
+                  <FormLabel>{t("phoneNumber")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="+1 (555) 123-4567" {...field} />
+                    <Input placeholder={t("placeholders.phone")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -181,9 +186,9 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               name="taxId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tax ID / VAT Number</FormLabel>
+                  <FormLabel>{t("taxId")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="XX-XXXXXXX" {...field} />
+                    <Input placeholder={t("placeholders.taxId")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -194,9 +199,9 @@ export function SettingsForm({ settings }: SettingsFormProps) {
 
         {/* Invoice Settings */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Invoice Settings</h3>
+          <h3 className="text-lg font-medium">{t("invoiceSettings")}</h3>
           <p className="text-sm text-muted-foreground">
-            Configure how your invoices are numbered
+            {t("invoiceSettingsDescription")}
           </p>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -205,12 +210,16 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               name="invoicePrefix"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Invoice Prefix</FormLabel>
+                  <FormLabel>{t("invoicePrefix")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="INV" maxLength={10} {...field} />
+                    <Input
+                      placeholder={t("placeholders.invoicePrefix")}
+                      maxLength={10}
+                      {...field}
+                    />
                   </FormControl>
                   <FormDescription>
-                    Prefix for invoice numbers (e.g., INV-001)
+                    {t("invoicePrefixDescription")}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -222,7 +231,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               name="invoiceNextNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Next Invoice Number</FormLabel>
+                  <FormLabel>{t("nextInvoiceNumber")}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -235,7 +244,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                     />
                   </FormControl>
                   <FormDescription>
-                    The next invoice will use this number
+                    {t("nextInvoiceNumberDescription")}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -246,7 +255,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
 
         <Button type="submit" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save Changes
+          {t("saveChanges")}
         </Button>
       </form>
     </Form>

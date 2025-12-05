@@ -8,6 +8,7 @@ import {
   FileText,
   Users,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface DashboardMetricsProps {
   metrics: {
@@ -20,47 +21,48 @@ interface DashboardMetricsProps {
 }
 
 export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
+  const t = useTranslations("dashboard");
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    const formatted = amount.toLocaleString("en-US", {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount);
+    });
+    return `${formatted} ₪`;
   };
 
   const cards = [
     {
-      title: "Total Revenue",
+      title: t("totalRevenue"),
       value: formatCurrency(metrics.totalRevenue),
       icon: DollarSign,
       iconBg: "bg-green-100",
       iconColor: "text-green-600",
     },
     {
-      title: "Pending",
+      title: t("pendingAmount"),
       value: formatCurrency(metrics.pendingAmount),
       icon: Clock,
       iconBg: "bg-amber-100",
       iconColor: "text-amber-600",
     },
     {
-      title: "Overdue",
+      title: t("overdueInvoices"),
       value: metrics.overdueCount.toString(),
       icon: AlertTriangle,
-      iconBg: "bg-red-100",
-      iconColor: "text-red-600",
+      iconBg: "bg-destructive/10",
+      iconColor: "text-destructive",
       highlight: metrics.overdueCount > 0,
     },
     {
-      title: "Total Invoices",
+      title: t("paidInvoices"),
       value: metrics.totalInvoices.toString(),
       icon: FileText,
       iconBg: "bg-blue-100",
       iconColor: "text-blue-600",
     },
     {
-      title: "Total Clients",
+      title: t("totalClients"),
       value: metrics.totalClients.toString(),
       icon: Users,
       iconBg: "bg-purple-100",
@@ -73,17 +75,19 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
       {cards.map((card) => (
         <Card
           key={card.title}
-          className={card.highlight ? "border-red-200 bg-red-50/50" : ""}
+          className={
+            card.highlight ? "border-destructive/50 bg-destructive/5" : ""
+          }
         >
           <CardContent className="p-4 md:p-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
-                <p className="text-xs md:text-sm text-slate-500 font-medium">
+                <p className="text-xs md:text-sm text-muted-foreground font-medium">
                   {card.title}
                 </p>
                 <p
                   className={`text-lg md:text-2xl font-bold ${
-                    card.highlight ? "text-red-600" : "text-slate-900"
+                    card.highlight ? "text-destructive" : "text-foreground"
                   }`}
                 >
                   {card.value}

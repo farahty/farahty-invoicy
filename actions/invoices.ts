@@ -20,7 +20,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const invoiceItemSchema = z.object({
   description: z.string().min(1, "Description is required"),
-  quantity: z.coerce.number().min(0.01, "Quantity must be greater than 0"),
+  quantity: z.coerce.number().int().min(1, "Quantity must be at least 1"),
   rate: z.coerce.number().min(0, "Rate must be 0 or greater"),
 });
 
@@ -159,7 +159,7 @@ export async function createInvoice(data: InvoiceInput) {
   const itemsToInsert = validated.items.map((item, index) => ({
     invoiceId: invoice.id,
     description: item.description,
-    quantity: item.quantity.toFixed(2),
+    quantity: String(Math.round(item.quantity)),
     rate: item.rate.toFixed(2),
     amount: (item.quantity * item.rate).toFixed(2),
     sortOrder: index,
@@ -238,7 +238,7 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
   const itemsToInsert = validated.items.map((item, index) => ({
     invoiceId: invoice.id,
     description: item.description,
-    quantity: item.quantity.toFixed(2),
+    quantity: String(Math.round(item.quantity)),
     rate: item.rate.toFixed(2),
     amount: (item.quantity * item.rate).toFixed(2),
     sortOrder: index,
@@ -354,10 +354,12 @@ export async function sendInvoiceEmail(invoiceId: string) {
   });
 
   const formatCurrency = (amount: string | number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(typeof amount === "string" ? parseFloat(amount) : amount);
+    const value = typeof amount === "string" ? parseFloat(amount) : amount;
+    const formatted = value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return `${formatted} ₪`;
   };
 
   // Send email

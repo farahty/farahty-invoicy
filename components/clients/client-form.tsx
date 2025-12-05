@@ -20,6 +20,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient, updateClient } from "@/actions/clients";
 import type { Client } from "@/db/schema";
+import { useTranslations } from "next-intl";
 
 const clientSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -41,6 +42,8 @@ interface ClientFormProps {
 export function ClientForm({ client }: ClientFormProps) {
   const router = useRouter();
   const isEditing = !!client;
+  const t = useTranslations("clients");
+  const tCommon = useTranslations("common");
 
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientSchema),
@@ -61,7 +64,7 @@ export function ClientForm({ client }: ClientFormProps) {
       if (isEditing) {
         const result = await updateClient(client.id, data);
         if (result.success) {
-          toast.success("Client updated successfully");
+          toast.success(t("updated"));
           router.push(`/clients/${client.id}`);
           router.refresh();
         } else {
@@ -70,7 +73,7 @@ export function ClientForm({ client }: ClientFormProps) {
       } else {
         const result = await createClient(data);
         if (result.success) {
-          toast.success("Client created successfully");
+          toast.success(t("created"));
           router.push("/clients");
           router.refresh();
         }
@@ -85,7 +88,7 @@ export function ClientForm({ client }: ClientFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Basic Information</CardTitle>
+            <CardTitle className="text-lg">{t("basicInfo")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
@@ -93,9 +96,12 @@ export function ClientForm({ client }: ClientFormProps) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name *</FormLabel>
+                  <FormLabel>{t("name")} *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Client name" {...field} />
+                    <Input
+                      placeholder={t("clientNamePlaceholder")}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -107,11 +113,11 @@ export function ClientForm({ client }: ClientFormProps) {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t("email")}</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="client@example.com"
+                        placeholder={t("emailPlaceholder")}
                         {...field}
                       />
                     </FormControl>
@@ -124,11 +130,11 @@ export function ClientForm({ client }: ClientFormProps) {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone</FormLabel>
+                    <FormLabel>{t("phone")}</FormLabel>
                     <FormControl>
                       <Input
                         type="tel"
-                        placeholder="+1 234 567 890"
+                        placeholder={t("phonePlaceholder")}
                         {...field}
                       />
                     </FormControl>
@@ -142,7 +148,7 @@ export function ClientForm({ client }: ClientFormProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Address</CardTitle>
+            <CardTitle className="text-lg">{t("address")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
@@ -150,9 +156,9 @@ export function ClientForm({ client }: ClientFormProps) {
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Street Address</FormLabel>
+                  <FormLabel>{t("streetAddress")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="123 Main Street" {...field} />
+                    <Input placeholder={t("addressPlaceholder")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -164,9 +170,9 @@ export function ClientForm({ client }: ClientFormProps) {
                 name="city"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>City</FormLabel>
+                    <FormLabel>{t("city")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="New York" {...field} />
+                      <Input placeholder={t("cityPlaceholder")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -177,9 +183,9 @@ export function ClientForm({ client }: ClientFormProps) {
                 name="country"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Country</FormLabel>
+                    <FormLabel>{t("country")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="United States" {...field} />
+                      <Input placeholder={t("countryPlaceholder")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -191,7 +197,7 @@ export function ClientForm({ client }: ClientFormProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Additional Details</CardTitle>
+            <CardTitle className="text-lg">{t("additionalDetails")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
@@ -199,9 +205,9 @@ export function ClientForm({ client }: ClientFormProps) {
               name="taxId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tax ID / VAT Number</FormLabel>
+                  <FormLabel>{t("taxId")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="XX-XXXXXXX" {...field} />
+                    <Input placeholder={t("taxIdPlaceholder")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -212,10 +218,10 @@ export function ClientForm({ client }: ClientFormProps) {
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                  <FormLabel>{t("notes")}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Additional notes about this client..."
+                      placeholder={t("notesPlaceholder")}
                       className="min-h-[100px]"
                       {...field}
                     />
@@ -234,13 +240,13 @@ export function ClientForm({ client }: ClientFormProps) {
             onClick={() => router.back()}
             disabled={form.formState.isSubmitting}
           >
-            Cancel
+            {tCommon("cancel")}
           </Button>
           <Button type="submit" disabled={form.formState.isSubmitting}>
             {form.formState.isSubmitting && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {isEditing ? "Update Client" : "Create Client"}
+            {isEditing ? t("updateClient") : t("createClient")}
           </Button>
         </div>
       </form>

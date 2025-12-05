@@ -2,8 +2,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { ClientForm } from "@/components/clients/client-form";
+import { getTranslations } from "next-intl/server";
 
-export default function NewClientPage() {
+export default async function NewClientPage() {
+  const t = await getTranslations("clients");
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -14,8 +17,10 @@ export default function NewClientPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Add Client</h1>
-          <p className="text-slate-600">Create a new client</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("addClient")}
+          </h1>
+          <p className="text-muted-foreground">{t("createClient")}</p>
         </div>
       </div>
 

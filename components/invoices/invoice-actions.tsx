@@ -41,6 +41,7 @@ import {
 } from "@/actions/invoices";
 import { toast } from "sonner";
 import type { Invoice, Client, InvoiceStatus } from "@/db/schema";
+import { useTranslations } from "next-intl";
 
 interface InvoiceActionsProps {
   invoice: Invoice & { client: Client };
@@ -51,13 +52,15 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const t = useTranslations("invoices");
+  const tCommon = useTranslations("common");
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
       const result = await deleteInvoice(invoice.id);
       if (result.success) {
-        toast.success("Invoice deleted successfully");
+        toast.success(t("deleted"));
         setShowDeleteDialog(false);
         router.refresh();
       } else {
@@ -74,7 +77,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
     try {
       const result = await updateInvoiceStatus(invoice.id, status);
       if (result.success) {
-        toast.success(`Invoice marked as ${status}`);
+        toast.success(t("updated"));
         router.refresh();
       } else {
         toast.error(result.error || "Failed to update status");
@@ -89,7 +92,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
     try {
       const result = await sendInvoiceEmail(invoice.id);
       if (result.success) {
-        toast.success("Invoice sent successfully");
+        toast.success(t("sent"));
         router.refresh();
       } else {
         toast.error(result.error || "Failed to send invoice");
@@ -132,15 +135,15 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem asChild>
             <Link href={`/invoices/${invoice.id}`}>
-              <Eye className="mr-2 h-4 w-4" />
-              View
+              <Eye className="me-2 h-4 w-4" />
+              {t("invoiceDetails")}
             </Link>
           </DropdownMenuItem>
           {invoice.status === "draft" && (
             <DropdownMenuItem asChild>
               <Link href={`/invoices/${invoice.id}/edit`}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
+                <Edit className="me-2 h-4 w-4" />
+                {tCommon("edit")}
               </Link>
             </DropdownMenuItem>
           )}
@@ -150,8 +153,8 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
               handleDuplicate();
             }}
           >
-            <Copy className="mr-2 h-4 w-4" />
-            Duplicate
+            <Copy className="me-2 h-4 w-4" />
+            {tCommon("duplicate")}
           </DropdownMenuItem>
           {invoice.client.email && invoice.status !== "cancelled" && (
             <DropdownMenuItem
@@ -161,61 +164,61 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
               }}
               disabled={isSending}
             >
-              <Mail className="mr-2 h-4 w-4" />
-              {isSending ? "Sending..." : "Send Email"}
+              <Mail className="me-2 h-4 w-4" />
+              {isSending ? tCommon("loading") : t("sendInvoice")}
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
-              <Clock className="mr-2 h-4 w-4" />
-              Change Status
+              <Clock className="me-2 h-4 w-4" />
+              {t("status")}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               <DropdownMenuItem
                 onClick={() => handleStatusChange("draft")}
                 disabled={invoice.status === "draft"}
               >
-                Draft
+                {t("statuses.draft")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleStatusChange("sent")}
                 disabled={invoice.status === "sent"}
               >
-                Sent
+                {t("statuses.sent")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleStatusChange("paid")}
                 disabled={invoice.status === "paid"}
               >
-                <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
-                Mark as Paid
+                <CheckCircle className="me-2 h-4 w-4 text-green-600" />
+                {t("markAsPaid")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleStatusChange("overdue")}
                 disabled={invoice.status === "overdue"}
               >
-                Overdue
+                {t("statuses.overdue")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleStatusChange("cancelled")}
                 disabled={invoice.status === "cancelled"}
               >
-                <XCircle className="mr-2 h-4 w-4 text-slate-500" />
-                Cancelled
+                <XCircle className="me-2 h-4 w-4 text-muted-foreground" />
+                {t("statuses.cancelled")}
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            className="text-red-600 focus:text-red-600"
+            className="text-destructive focus:text-destructive"
             onClick={(e) => {
               e.preventDefault();
               setShowDeleteDialog(true);
             }}
           >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+            <Trash2 className="me-2 h-4 w-4" />
+            {tCommon("delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -223,11 +226,8 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Invoice</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete invoice &quot;
-              {invoice.invoiceNumber}&quot;? This action cannot be undone.
-            </DialogDescription>
+            <DialogTitle>{t("deleteInvoice")}</DialogTitle>
+            <DialogDescription>{t("deleteConfirm")}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
@@ -235,14 +235,14 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
               onClick={() => setShowDeleteDialog(false)}
               disabled={isDeleting}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? tCommon("loading") : tCommon("delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

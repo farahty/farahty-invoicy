@@ -15,17 +15,18 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ClientActions } from "@/components/clients/client-actions";
+import { getTranslations } from "next-intl/server";
 
 interface ClientDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
 const statusStyles = {
-  draft: "bg-slate-100 text-slate-700",
+  draft: "bg-muted text-muted-foreground",
   sent: "bg-blue-100 text-blue-700",
   paid: "bg-green-100 text-green-700",
-  overdue: "bg-red-100 text-red-700",
-  cancelled: "bg-slate-100 text-slate-500",
+  overdue: "bg-destructive/10 text-destructive",
+  cancelled: "bg-muted text-muted-foreground",
 };
 
 export default async function ClientDetailPage({
@@ -33,16 +34,20 @@ export default async function ClientDetailPage({
 }: ClientDetailPageProps) {
   const { id } = await params;
   const client = await getClient(id);
+  const t = await getTranslations("clients");
+  const tCommon = await getTranslations("common");
 
   if (!client) {
     notFound();
   }
 
   const formatCurrency = (amount: string | number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(typeof amount === "string" ? parseFloat(amount) : amount);
+    const value = typeof amount === "string" ? parseFloat(amount) : amount;
+    const formatted = value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return `${formatted} ₪`;
   };
 
   return (
@@ -56,21 +61,23 @@ export default async function ClientDetailPage({
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{client.name}</h1>
-            <p className="text-slate-600">Client Details</p>
+            <h1 className="text-2xl font-bold text-foreground">
+              {client.name}
+            </h1>
+            <p className="text-muted-foreground">{t("clientDetails")}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Link href={`/invoices/new?clientId=${client.id}`}>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Create Invoice
+              {t("createInvoice")}
             </Button>
           </Link>
           <Link href={`/clients/${client.id}/edit`}>
             <Button variant="outline" className="gap-2">
               <Edit className="h-4 w-4" />
-              Edit
+              {tCommon("edit")}
             </Button>
           </Link>
         </div>
@@ -80,17 +87,17 @@ export default async function ClientDetailPage({
         {/* Client Info */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-lg">Contact Information</CardTitle>
+            <CardTitle className="text-lg">{t("contactInfo")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {client.email && (
               <div className="flex items-start gap-3">
-                <Mail className="h-5 w-5 text-slate-400 mt-0.5" />
+                <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm text-slate-500">Email</p>
+                  <p className="text-sm text-muted-foreground">{t("email")}</p>
                   <a
                     href={`mailto:${client.email}`}
-                    className="text-slate-900 hover:underline"
+                    className="text-foreground hover:underline"
                   >
                     {client.email}
                   </a>
@@ -99,12 +106,12 @@ export default async function ClientDetailPage({
             )}
             {client.phone && (
               <div className="flex items-start gap-3">
-                <Phone className="h-5 w-5 text-slate-400 mt-0.5" />
+                <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm text-slate-500">Phone</p>
+                  <p className="text-sm text-muted-foreground">{t("phone")}</p>
                   <a
                     href={`tel:${client.phone}`}
-                    className="text-slate-900 hover:underline"
+                    className="text-foreground hover:underline"
                   >
                     {client.phone}
                   </a>
@@ -113,10 +120,12 @@ export default async function ClientDetailPage({
             )}
             {(client.address || client.city || client.country) && (
               <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-slate-400 mt-0.5" />
+                <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm text-slate-500">Address</p>
-                  <p className="text-slate-900">
+                  <p className="text-sm text-muted-foreground">
+                    {t("address")}
+                  </p>
+                  <p className="text-foreground">
                     {client.address && (
                       <span>
                         {client.address}
@@ -129,15 +138,15 @@ export default async function ClientDetailPage({
               </div>
             )}
             {client.taxId && (
-              <div className="pt-4 border-t border-slate-200">
-                <p className="text-sm text-slate-500">Tax ID / VAT</p>
-                <p className="text-slate-900">{client.taxId}</p>
+              <div className="pt-4 border-t border-border">
+                <p className="text-sm text-muted-foreground">{t("taxId")}</p>
+                <p className="text-foreground">{client.taxId}</p>
               </div>
             )}
             {client.notes && (
-              <div className="pt-4 border-t border-slate-200">
-                <p className="text-sm text-slate-500">Notes</p>
-                <p className="text-slate-900 whitespace-pre-wrap">
+              <div className="pt-4 border-t border-border">
+                <p className="text-sm text-muted-foreground">{t("notes")}</p>
+                <p className="text-foreground whitespace-pre-wrap">
                   {client.notes}
                 </p>
               </div>
@@ -148,22 +157,24 @@ export default async function ClientDetailPage({
         {/* Recent Invoices */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Recent Invoices</CardTitle>
+            <CardTitle className="text-lg">{t("recentInvoices")}</CardTitle>
             <Link href={`/invoices?clientId=${client.id}`}>
               <Button variant="ghost" size="sm">
-                View all
+                {t("viewAll")}
               </Button>
             </Link>
           </CardHeader>
           <CardContent>
             {client.invoices.length === 0 ? (
               <div className="text-center py-8">
-                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileText className="h-6 w-6 text-slate-400" />
+                <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FileText className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <p className="text-slate-600 mb-4">No invoices yet</p>
+                <p className="text-muted-foreground mb-4">
+                  {t("noInvoicesYet")}
+                </p>
                 <Link href={`/invoices/new?clientId=${client.id}`}>
-                  <Button>Create Invoice</Button>
+                  <Button>{t("createInvoice")}</Button>
                 </Link>
               </div>
             ) : (
@@ -174,17 +185,17 @@ export default async function ClientDetailPage({
                     href={`/invoices/${invoice.id}`}
                     className="block"
                   >
-                    <div className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent transition-colors">
                       <div>
-                        <p className="font-medium text-slate-900">
+                        <p className="font-medium text-foreground">
                           {invoice.invoiceNumber}
                         </p>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-muted-foreground">
                           {format(new Date(invoice.date), "MMM d, yyyy")}
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-semibold text-slate-900">
+                        <span className="font-semibold text-foreground">
                           {formatCurrency(invoice.total)}
                         </span>
                         <Badge

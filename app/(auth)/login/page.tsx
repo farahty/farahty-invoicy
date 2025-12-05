@@ -27,17 +27,19 @@ import {
 } from "@/components/ui/form";
 import { Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
-
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-type LoginForm = z.infer<typeof loginSchema>;
+import { useTranslations } from "next-intl";
 
 export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const t = useTranslations("auth");
+
+  const loginSchema = z.object({
+    email: z.string().email(t("emailRequired")),
+    password: z.string().min(6, t("passwordMinLength")),
+  });
+
+  type LoginForm = z.infer<typeof loginSchema>;
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -56,29 +58,28 @@ export default function LoginPage() {
       });
 
       if (result.error) {
-        toast.error(result.error.message || "Invalid credentials");
+        toast.error(result.error.message || t("invalidCredentials"));
         return;
       }
 
-      toast.success("Welcome back!");
+      toast.success(t("loginSuccess"));
       router.push("/dashboard");
       router.refresh();
     } catch {
-      toast.error("Something went wrong. Please try again.");
+      toast.error(t("invalidCredentials"));
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center mb-2">
-            <FileText className="w-6 h-6 text-white" />
+          <div className="mx-auto w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-2">
+            <FileText className="w-6 h-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-          <CardDescription>Sign in to your account to continue</CardDescription>
+          <CardTitle className="text-2xl font-bold">{t("login")}</CardTitle>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -88,7 +89,7 @@ export default function LoginPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t("email")}</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
@@ -107,12 +108,12 @@ export default function LoginPage() {
                 render={({ field }) => (
                   <FormItem>
                     <div className="flex items-center justify-between">
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel>{t("password")}</FormLabel>
                       <Link
                         href="/forgot-password"
-                        className="text-sm text-slate-600 hover:text-slate-900"
+                        className="text-sm text-muted-foreground hover:text-foreground"
                       >
-                        Forgot password?
+                        {t("forgotPassword")}
                       </Link>
                     </div>
                     <FormControl>
@@ -130,16 +131,16 @@ export default function LoginPage() {
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sign in
+                {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                {t("login")}
               </Button>
-              <p className="text-sm text-center text-slate-600">
-                Don&apos;t have an account?{" "}
+              <p className="text-sm text-center text-muted-foreground">
+                {t("noAccount")}{" "}
                 <Link
                   href="/register"
-                  className="font-medium text-slate-900 hover:underline"
+                  className="font-medium text-foreground hover:underline"
                 >
-                  Sign up
+                  {t("register")}
                 </Link>
               </p>
             </CardFooter>
