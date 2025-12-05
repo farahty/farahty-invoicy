@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/session";
+import { requireOrgAuth } from "@/lib/session";
 import { Sidebar } from "@/components/layout/sidebar";
 import { getLocale } from "next-intl/server";
 
@@ -7,7 +7,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireAuth();
+  const session = await requireOrgAuth();
   const locale = await getLocale();
   const isRtl = locale === "ar";
 
@@ -19,6 +19,7 @@ export default async function DashboardLayout({
           email: session.user.email,
           image: session.user.image,
         }}
+        organizationName={session.activeOrganization?.name || "Farahty"}
       />
 
       {/* Main Content */}

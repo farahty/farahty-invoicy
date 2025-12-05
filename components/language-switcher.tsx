@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, useState, useEffect } from "react";
 import { useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,11 @@ const languages = [
 export function LanguageSwitcher() {
   const locale = useLocale();
   const [isPending, startTransition] = useTransition();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const currentLanguage = languages.find((lang) => lang.code === locale);
 
@@ -28,6 +33,15 @@ export function LanguageSwitcher() {
       await setLocale(newLocale);
     });
   };
+
+  if (!mounted) {
+    return (
+      <Button variant="ghost" size="sm" className="gap-2" disabled>
+        <Languages className="h-4 w-4" />
+        <span className="hidden sm:inline">{currentLanguage?.name}</span>
+      </Button>
+    );
+  }
 
   return (
     <DropdownMenu>
