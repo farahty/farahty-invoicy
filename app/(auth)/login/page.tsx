@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +15,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import {
   Form,
@@ -24,14 +25,21 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2, FileText } from "lucide-react";
+import { Loader2, FileText, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const t = useTranslations("auth");
+  const tOrg = useTranslations("organizations");
+
+  // Get invitation params from URL
+  const invitationId = searchParams.get("invitationId");
+  const invitationEmail = searchParams.get("email");
+  const isInvitationFlow = !!invitationId && !!invitationEmail;
 
   const loginSchema = z.object({
     email: z.string().email(t("emailRequired")),
@@ -43,10 +51,17 @@ export default function LoginPage() {
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      email: invitationEmail || "",
       password: "",
     },
   });
+
+  // Update email when invitation email changes
+  useEffect(() => {
+    if (invitationEmail) {
+      form.setValue("email", invitationEmail);
+    }
+  }, [invitationEmail, form]);
 
   async function onSubmit(data: LoginForm) {
     setIsLoading(true);
@@ -62,7 +77,13 @@ export default function LoginPage() {
       }
 
       toast.success(t("loginSuccess"));
-      router.push("/dashboard");
+
+      // If invitation flow, redirect back to accept invitation page
+      if (invitationId) {
+        router.push(`/accept-invitation/${invitationId}`);
+      } else {
+        router.push("/dashboard");
+      }
       router.refresh();
     } catch {
       toast.error(t("invalidCredentials"));
@@ -76,9 +97,16 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-2">
           <div className="mx-auto w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-2">
-            <FileText className="w-6 h-6 text-primary-foreground" />
+            {isInvitationFlow ? (
+              <Building2 className="w-6 h-6 text-primary-foreground" />
+            ) : (
+              <FileText className="w-6 h-6 text-primary-foreground" />
+            )}
           </div>
           <CardTitle className="text-2xl font-bold">{t("login")}</CardTitle>
+          {isInvitationFlow && (
+            <CardDescription>{tOrg("loginToAcceptInvitation")}</CardDescription>
+          )}
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -94,6 +122,8 @@ export default function LoginPage() {
                         type="email"
                         placeholder="you@example.com"
                         autoComplete="email"
+                        disabled={isInvitationFlow}
+                        className={isInvitationFlow ? "bg-muted" : ""}
                         {...field}
                       />
                     </FormControl>
@@ -136,7 +166,13 @@ export default function LoginPage() {
               <p className="text-sm text-center text-muted-foreground">
                 {t("noAccount")}{" "}
                 <Link
-                  href="/register"
+                  href={
+                    isInvitationFlow
+                      ? `/register?invitationId=${invitationId}&email=${encodeURIComponent(
+                          invitationEmail || ""
+                        )}`
+                      : "/register"
+                  }
                   className="font-medium text-foreground hover:underline"
                 >
                   {t("register")}
