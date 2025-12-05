@@ -199,7 +199,7 @@ export default function RegisterPage() {
                 )}
               />
             </CardContent>
-            <CardFooter className="flex flex-col gap-4">
+            <CardFooter className="flex flex-col gap-4 mt-4">
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                 {t("createAccount")}
