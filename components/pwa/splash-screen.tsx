@@ -2,39 +2,52 @@
 
 import { useEffect, useState } from "react";
 
+// Check PWA mode synchronously (for initial render)
+function isPWAMode(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    // @ts-expect-error - iOS specific property
+    window.navigator.standalone === true
+  );
+}
+
 export function PWASplashScreen() {
-  const [showSplash, setShowSplash] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Start with splash visible in PWA mode (checked synchronously)
+  const [showSplash, setShowSplash] = useState(true);
+  const [shouldRender, setShouldRender] = useState(false);
 
   useEffect(() => {
-    // Check if running as PWA (standalone mode) - only on client
-    const isPWA =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      // @ts-expect-error - iOS specific property
-      window.navigator.standalone === true;
+    const isPWA = isPWAMode();
 
-    setShowSplash(isPWA);
-
-    if (isPWA) {
-      // Hide splash after app has loaded
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-        // Fade out animation
-        setTimeout(() => setShowSplash(false), 500);
-      }, 1000);
-
-      return () => clearTimeout(timer);
+    if (!isPWA) {
+      // Not PWA mode - don't show anything
+      setShowSplash(false);
+      setShouldRender(false);
+      return;
     }
+
+    // PWA mode - show splash and schedule hide
+    setShouldRender(true);
+
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1200);
+
+    return () => clearTimeout(timer);
   }, []);
 
-  // Don't render anything until we've checked PWA status (prevents hydration mismatch)
-  if (showSplash === null || showSplash === false) return null;
+  // Don't render if not in PWA mode
+  if (!shouldRender) return null;
 
   return (
     <div
       className={`fixed inset-0 z-9999 flex flex-col items-center justify-center bg-background transition-opacity duration-500 ${
-        isLoading ? "opacity-100" : "opacity-0 pointer-events-none"
+        showSplash ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
+      onTransitionEnd={() => {
+        if (!showSplash) setShouldRender(false);
+      }}
     >
       {/* Logo */}
       <div className="relative mb-8">
