@@ -13,14 +13,6 @@ export function PWASplashScreen() {
       // @ts-expect-error - iOS specific property
       window.navigator.standalone === true;
 
-    // Hide the inline CSS splash screen
-    const inlineSplash = document.getElementById("pwa-splash");
-    if (inlineSplash) {
-      inlineSplash.classList.add("hide");
-      // Remove from DOM after animation
-      setTimeout(() => inlineSplash.remove(), 500);
-    }
-
     setShowSplash(isPWA);
 
     if (isPWA) {
