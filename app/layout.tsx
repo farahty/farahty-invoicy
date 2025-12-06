@@ -7,6 +7,8 @@ import { getLocale, getMessages } from "next-intl/server";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 import { AppLoader } from "@/components/pwa/app-loader";
+import { NetworkStatus } from "@/components/pwa/network-status";
+import { OfflineStartup } from "@/components/pwa/offline-startup";
 import { TopLoader } from "@/components/top-loader";
 
 const inter = Inter({
@@ -174,6 +176,8 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <AppLoader />
+          <OfflineStartup />
+          <NetworkStatus />
           <TopLoader />
           <NextIntlClientProvider messages={messages}>
             {children}
