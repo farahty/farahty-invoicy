@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,8 +27,15 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Farahty",
+  },
+  applicationName: "Farahty",
+  formatDetection: {
+    telephone: false,
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
 };
 
@@ -64,6 +72,7 @@ export default async function RootLayout({
           <NextIntlClientProvider messages={messages}>
             {children}
             <Toaster position="top-center" richColors />
+            <ServiceWorkerRegistration />
           </NextIntlClientProvider>
         </ThemeProvider>
       </body>
