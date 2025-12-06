@@ -139,7 +139,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
               {t("invoiceDetails")}
             </Link>
           </DropdownMenuItem>
-          {invoice.status === "draft" && (
+          {invoice.status !== "cancelled" && (
             <DropdownMenuItem asChild>
               <Link href={`/invoices/${invoice.id}/edit`}>
                 <Edit className="me-2 h-4 w-4" />

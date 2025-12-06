@@ -127,13 +127,32 @@ export function ActivityLogList({
                 </div>
               )}
 
-              {log.details && log.action === "payment_recorded" && (
+              {log.action === "payment_recorded" && (
                 <div className="text-sm text-muted-foreground mt-1">
                   ₪
                   {(
                     log.newValues as Record<string, number>
                   )?.amount?.toLocaleString()}{" "}
-                  • {(log.details as Record<string, string>)?.invoiceNumber}
+                  {(log.details as Record<string, string>)?.invoiceNumber && (
+                    <>
+                      • {(log.details as Record<string, string>).invoiceNumber}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {log.action === "payment_deleted" && (
+                <div className="text-sm text-muted-foreground mt-1">
+                  ₪
+                  {parseFloat(
+                    (log.previousValues as Record<string, string>)?.amount ||
+                      "0"
+                  ).toLocaleString()}{" "}
+                  {(log.details as Record<string, string>)?.invoiceNumber && (
+                    <>
+                      • {(log.details as Record<string, string>).invoiceNumber}
+                    </>
+                  )}
                 </div>
               )}
 

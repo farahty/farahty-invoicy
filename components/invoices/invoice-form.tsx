@@ -26,16 +26,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import {
   createInvoice,
   updateInvoice,
+  updateInvoiceWithPaymentRemovals,
   getItemSuggestions,
 } from "@/actions/invoices";
-import type { Client, Invoice, InvoiceItem } from "@/db/schema";
+import type { Client, Invoice, InvoiceItem, Payment } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import { PaymentRemovalDialog } from "./payment-removal-dialog";
 
 const invoiceItemSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -58,18 +61,36 @@ type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 interface InvoiceFormProps {
   clients: Client[];
   invoice?: Invoice & { items: InvoiceItem[] };
+  payments?: Payment[];
   defaultClientId?: string;
 }
 
 export function InvoiceForm({
   clients,
   invoice,
+  payments = [],
   defaultClientId,
 }: InvoiceFormProps) {
   const router = useRouter();
   const isEditing = !!invoice;
+  const isDraft = invoice?.status === "draft";
   const t = useTranslations("invoices");
   const tCommon = useTranslations("common");
+
+  // Filter out soft-deleted payments
+  const activePayments = payments.filter((p) => !p.deletedAt);
+  const hasPayments = activePayments.length > 0;
+  const currentAmountPaid = activePayments.reduce(
+    (sum, p) => sum + parseFloat(p.amount),
+    0
+  );
+
+  // State for payment removal dialog
+  const [showPaymentRemovalDialog, setShowPaymentRemovalDialog] =
+    useState(false);
+  const [pendingFormData, setPendingFormData] =
+    useState<InvoiceFormValues | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
@@ -124,7 +145,21 @@ export function InvoiceForm({
         dueDate: new Date(data.dueDate),
       };
 
+      // Calculate new total from form items
+      const newTotal = data.items.reduce(
+        (sum, item) => sum + item.quantity * item.rate,
+        0
+      );
+
       if (isEditing) {
+        // Check if editing an invoice with payments would cause overpayment
+        if (hasPayments && newTotal < currentAmountPaid) {
+          // Show payment removal dialog
+          setPendingFormData(data);
+          setShowPaymentRemovalDialog(true);
+          return;
+        }
+
         const result = await updateInvoice(invoice.id, payload);
         if (result.success) {
           toast.success(t("updated"));
@@ -146,313 +181,285 @@ export function InvoiceForm({
     }
   };
 
+  // Handler for payment removal dialog confirmation
+  const handlePaymentRemovalConfirm = async (paymentIdsToRemove: string[]) => {
+    if (!pendingFormData || !invoice) return;
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...pendingFormData,
+        date: new Date(pendingFormData.date),
+        dueDate: new Date(pendingFormData.dueDate),
+      };
+
+      const result = await updateInvoiceWithPaymentRemovals(
+        invoice.id,
+        payload,
+        paymentIdsToRemove
+      );
+
+      if (result.success) {
+        toast.success(t("updated"));
+        setShowPaymentRemovalDialog(false);
+        setPendingFormData(null);
+        router.push(`/invoices/${invoice.id}`);
+        router.refresh();
+      } else {
+        toast.error(result.error || "Failed to update invoice");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Client & Dates */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{t("invoiceDetails")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="clientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("client")} *</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t("selectClient")} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* Client & Dates */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">{t("invoiceDetails")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <FormField
                 control={form.control}
-                name="date"
+                name="clientId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("invoiceDate")} *</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
+                    <FormLabel>{t("client")} *</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t("selectClient")} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {clients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="dueDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("dueDate")} *</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Line Items */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{t("lineItems")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Desktop Table View */}
-            <div className="hidden md:block">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 px-2 text-sm font-medium text-muted-foreground w-[40%]">
-                      {t("description")}
-                    </th>
-                    <th className="text-right py-2 px-2 text-sm font-medium text-muted-foreground w-[15%]">
-                      {t("quantity")}
-                    </th>
-                    <th className="text-right py-2 px-2 text-sm font-medium text-muted-foreground w-[20%]">
-                      {t("rate")}
-                    </th>
-                    <th className="text-right py-2 px-2 text-sm font-medium text-muted-foreground w-[20%]">
-                      {t("lineTotal")}
-                    </th>
-                    <th className="w-[5%]"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fields.map((field, index) => (
-                    <tr key={field.id} className="border-b border-border/50">
-                      <td className="py-2 px-2 overflow-visible">
-                        <InvoiceItemDescriptionField
-                          control={form.control}
-                          index={index}
-                          t={t}
-                        />
-                      </td>
-                      <td className="py-2 px-2">
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.quantity`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="1"
-                                  min="1"
-                                  className="text-right"
-                                  value={field.value}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      parseInt(e.target.value) || 1
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </td>
-                      <td className="py-2 px-2">
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.rate`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  className="text-right"
-                                  value={field.value}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      parseFloat(e.target.value) || 0
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </td>
-                      <td className="py-2 px-2 text-right font-medium">
-                        {formatCurrency(
-                          (watchedItems[index]?.quantity || 0) *
-                            (watchedItems[index]?.rate || 0)
-                        )}
-                      </td>
-                      <td className="py-2 px-2">
-                        {fields.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => remove(index)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </td>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("invoiceDate")} *</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("dueDate")} *</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Line Items */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">{t("lineItems")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Desktop Table View */}
+              <div className="hidden md:block">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 px-2 text-sm font-medium text-muted-foreground w-[40%]">
+                        {t("description")}
+                      </th>
+                      <th className="text-right py-2 px-2 text-sm font-medium text-muted-foreground w-[15%]">
+                        {t("quantity")}
+                      </th>
+                      <th className="text-right py-2 px-2 text-sm font-medium text-muted-foreground w-[20%]">
+                        {t("rate")}
+                      </th>
+                      <th className="text-right py-2 px-2 text-sm font-medium text-muted-foreground w-[20%]">
+                        {t("lineTotal")}
+                      </th>
+                      <th className="w-[5%]"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {fields.map((field, index) => (
+                      <tr key={field.id} className="border-b border-border/50">
+                        <td className="py-2 px-2 overflow-visible">
+                          <InvoiceItemDescriptionField
+                            control={form.control}
+                            index={index}
+                            t={t}
+                          />
+                        </td>
+                        <td className="py-2 px-2">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.quantity`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="1"
+                                    min="1"
+                                    className="text-right"
+                                    value={field.value}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        parseInt(e.target.value) || 1
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </td>
+                        <td className="py-2 px-2">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.rate`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    className="text-right"
+                                    value={field.value}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        parseFloat(e.target.value) || 0
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </td>
+                        <td className="py-2 px-2 text-right font-medium">
+                          {formatCurrency(
+                            (watchedItems[index]?.quantity || 0) *
+                              (watchedItems[index]?.rate || 0)
+                          )}
+                        </td>
+                        <td className="py-2 px-2">
+                          {fields.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => remove(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-4">
-              {fields.map((field, index) => (
-                <div
-                  key={field.id}
-                  className="border border-border rounded-lg p-4 space-y-3"
-                >
-                  <div className="flex items-start justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">
-                      {t("items")} {index + 1}
-                    </span>
-                    {fields.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive -mr-2 -mt-2"
-                        onClick={() => remove(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-
-                  <InvoiceItemDescriptionField
-                    control={form.control}
-                    index={index}
-                    label={t("description")}
-                    t={t}
-                  />
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.quantity`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
-                            {t("quantity")}
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="1"
-                              min="1"
-                              value={field.value}
-                              onChange={(e) =>
-                                field.onChange(parseInt(e.target.value) || 1)
-                              }
-                            />
-                          </FormControl>
-                        </FormItem>
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-4">
+                {fields.map((field, index) => (
+                  <div
+                    key={field.id}
+                    className="border border-border rounded-lg p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {t("items")} {index + 1}
+                      </span>
+                      {fields.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive -mr-2 -mt-2"
+                          onClick={() => remove(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       )}
+                    </div>
+
+                    <InvoiceItemDescriptionField
+                      control={form.control}
+                      index={index}
+                      label={t("description")}
+                      t={t}
                     />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.rate`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">{t("rate")}</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={field.value}
-                              onChange={(e) =>
-                                field.onChange(parseFloat(e.target.value) || 0)
-                              }
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
 
-                  <div className="flex justify-between items-center pt-2 border-t border-border/50">
-                    <span className="text-sm text-muted-foreground">
-                      {t("lineTotal")}
-                    </span>
-                    <span className="font-medium">
-                      {formatCurrency(
-                        (watchedItems[index]?.quantity || 0) *
-                          (watchedItems[index]?.rate || 0)
-                      )}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => append({ description: "", quantity: 1, rate: 0 })}
-            >
-              <Plus className="h-4 w-4" />
-              {t("addItem")}
-            </Button>
-
-            {form.formState.errors.items?.root && (
-              <p className="text-sm text-destructive">
-                {form.formState.errors.items.root.message}
-              </p>
-            )}
-
-            {/* Totals */}
-            <div className="pt-4 border-t border-border">
-              <div className="flex justify-end">
-                <div className="w-full sm:w-64 space-y-3">
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>{t("subtotal")}</span>
-                    <span>{formatCurrency(subtotal)}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-muted-foreground">{t("tax")}</span>
-                    <FormField
-                      control={form.control}
-                      name="taxRate"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormControl>
-                            <div className="relative">
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.quantity`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              {t("quantity")}
+                            </FormLabel>
+                            <FormControl>
                               <Input
                                 type="number"
-                                step="0.1"
+                                step="1"
+                                min="1"
+                                value={field.value}
+                                onChange={(e) =>
+                                  field.onChange(parseInt(e.target.value) || 1)
+                                }
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.rate`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              {t("rate")}
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
                                 min="0"
-                                max="100"
-                                className="pr-8 text-right"
                                 value={field.value}
                                 onChange={(e) =>
                                   field.onChange(
@@ -460,91 +467,189 @@ export function InvoiceForm({
                                   )
                                 }
                               />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                %
-                              </span>
-                            </div>
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <span className="w-24 text-right">
-                      {formatCurrency(taxAmount)}
-                    </span>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                      <span className="text-sm text-muted-foreground">
+                        {t("lineTotal")}
+                      </span>
+                      <span className="font-medium">
+                        {formatCurrency(
+                          (watchedItems[index]?.quantity || 0) *
+                            (watchedItems[index]?.rate || 0)
+                        )}
+                      </span>
+                    </div>
                   </div>
-                  <Separator />
-                  <div className="flex justify-between text-lg font-bold text-foreground">
-                    <span>{tCommon("total")}</span>
-                    <span>{formatCurrency(total)}</span>
+                ))}
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() =>
+                  append({ description: "", quantity: 1, rate: 0 })
+                }
+              >
+                <Plus className="h-4 w-4" />
+                {t("addItem")}
+              </Button>
+
+              {form.formState.errors.items?.root && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.items.root.message}
+                </p>
+              )}
+
+              {/* Totals */}
+              <div className="pt-4 border-t border-border">
+                <div className="flex justify-end">
+                  <div className="w-full sm:w-64 space-y-3">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>{t("subtotal")}</span>
+                      <span>{formatCurrency(subtotal)}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-muted-foreground">{t("tax")}</span>
+                      <FormField
+                        control={form.control}
+                        name="taxRate"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  min="0"
+                                  max="100"
+                                  className="pr-8 text-right"
+                                  value={field.value}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      parseFloat(e.target.value) || 0
+                                    )
+                                  }
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                  %
+                                </span>
+                              </div>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <span className="w-24 text-right">
+                        {formatCurrency(taxAmount)}
+                      </span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-lg font-bold text-foreground">
+                      <span>{tCommon("total")}</span>
+                      <span>{formatCurrency(total)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Notes & Terms */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{t("additionalInfo")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("notes")}</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder={t("placeholders.notes")}
-                      className="min-h-20"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="terms"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("termsAndConditions")}</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder={t("placeholders.terms")}
-                      className="min-h-20"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
+          {/* Notes & Terms */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">{t("additionalInfo")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("notes")}</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder={t("placeholders.notes")}
+                        className="min-h-20"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="terms"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("termsAndConditions")}</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder={t("placeholders.terms")}
+                        className="min-h-20"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
 
-        {/* Actions */}
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-            disabled={form.formState.isSubmitting}
-          >
-            {tCommon("cancel")}
-          </Button>
-          <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            {isEditing ? t("updateInvoice") : t("createInvoice")}
-          </Button>
-        </div>
-      </form>
-    </Form>
+          {/* Actions */}
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              disabled={form.formState.isSubmitting || isSubmitting}
+            >
+              {tCommon("cancel")}
+            </Button>
+            <Button
+              type="submit"
+              disabled={form.formState.isSubmitting || isSubmitting}
+            >
+              {(form.formState.isSubmitting || isSubmitting) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {isEditing ? t("updateInvoice") : t("createInvoice")}
+            </Button>
+          </div>
+        </form>
+      </Form>
+
+      {/* Payment Removal Dialog for when new total < amount paid */}
+      {isEditing && (
+        <PaymentRemovalDialog
+          open={showPaymentRemovalDialog}
+          onOpenChange={(open) => {
+            setShowPaymentRemovalDialog(open);
+            if (!open) {
+              setPendingFormData(null);
+            }
+          }}
+          payments={activePayments}
+          currentAmountPaid={currentAmountPaid}
+          newTotal={
+            pendingFormData
+              ? pendingFormData.items.reduce(
+                  (sum, item) => sum + item.quantity * item.rate,
+                  0
+                )
+              : 0
+          }
+          onConfirm={handlePaymentRemovalConfirm}
+          isSubmitting={isSubmitting}
+        />
+      )}
+    </>
   );
 }
 

@@ -169,7 +169,20 @@
       "typeToSearch": "Type to search or add new..."
     },
     "suggestions": "Suggestions",
-    "enterToSelect": "Enter to select"
+    "enterToSelect": "Enter to select",
+    "paymentRemovalRequired": "Payment Removal Required",
+    "paymentRemovalDescription": "The new invoice total is less than the amount already paid. Please select payments to remove.",
+    "currentAmountPaid": "Current Amount Paid",
+    "newInvoiceTotal": "New Invoice Total",
+    "excessPaymentWarning": "You need to remove at least {amount} to proceed with this update.",
+    "selectPaymentsToRemove": "Select payments to remove:",
+    "remainingPaymentsExceedTotal": "The remaining payments still exceed the new invoice total. Please select more payments to remove.",
+    "selectMorePayments": "Please select more payments. You still need to remove {amount} more.",
+    "saveAndRemovePayments": "Save & Remove Payments",
+    "hasExistingPayments": "This invoice has existing payments",
+    "amountToRemove": "Amount to Remove",
+    "remainingPayments": "Remaining Payments",
+    "newBalanceDue": "New Balance Due"
   },
   "payments": {
     "title": "Payments",

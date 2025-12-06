@@ -152,17 +152,36 @@ export async function getEntityActivity(
   }
 
   try {
-    const logs = await db.query.activityLogs.findMany({
-      where: and(
-        eq(activityLogs.organizationId, session.session.activeOrganizationId),
-        eq(activityLogs.entityType, entityType),
-        eq(activityLogs.entityId, entityId)
-      ),
-      with: {
-        user: true,
-      },
-      orderBy: [desc(activityLogs.createdAt)],
-    });
+    // For invoices, also include related payment activities
+    let logs;
+    if (entityType === "invoice") {
+      logs = await db.query.activityLogs.findMany({
+        where: and(
+          eq(activityLogs.organizationId, session.session.activeOrganizationId),
+          sql`(
+            (${activityLogs.entityType} = 'invoice' AND ${activityLogs.entityId} = ${entityId})
+            OR 
+            (${activityLogs.entityType} = 'payment' AND ${activityLogs.details}::jsonb->>'invoiceId' = ${entityId})
+          )`
+        ),
+        with: {
+          user: true,
+        },
+        orderBy: [desc(activityLogs.createdAt)],
+      });
+    } else {
+      logs = await db.query.activityLogs.findMany({
+        where: and(
+          eq(activityLogs.organizationId, session.session.activeOrganizationId),
+          eq(activityLogs.entityType, entityType),
+          eq(activityLogs.entityId, entityId)
+        ),
+        with: {
+          user: true,
+        },
+        orderBy: [desc(activityLogs.createdAt)],
+      });
+    }
 
     return {
       logs: logs.map((log) => ({

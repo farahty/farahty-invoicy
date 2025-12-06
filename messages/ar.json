@@ -169,7 +169,20 @@
       "typeToSearch": "اكتب للبحث أو إضافة جديد..."
     },
     "suggestions": "اقتراحات",
-    "enterToSelect": "اضغط Enter للاختيار"
+    "enterToSelect": "اضغط Enter للاختيار",
+    "paymentRemovalRequired": "مطلوب إزالة دفعات",
+    "paymentRemovalDescription": "إجمالي الفاتورة الجديد أقل من المبلغ المدفوع بالفعل. يرجى اختيار الدفعات لإزالتها.",
+    "currentAmountPaid": "المبلغ المدفوع الحالي",
+    "newInvoiceTotal": "إجمالي الفاتورة الجديد",
+    "excessPaymentWarning": "تحتاج إلى إزالة ما لا يقل عن {amount} للمتابعة في هذا التحديث.",
+    "selectPaymentsToRemove": "اختر الدفعات للإزالة:",
+    "remainingPaymentsExceedTotal": "الدفعات المتبقية لا تزال تتجاوز إجمالي الفاتورة الجديد. يرجى اختيار المزيد من الدفعات للإزالة.",
+    "selectMorePayments": "يرجى اختيار المزيد من الدفعات. لا تزال بحاجة لإزالة {amount} إضافية.",
+    "saveAndRemovePayments": "حفظ وإزالة الدفعات",
+    "hasExistingPayments": "هذه الفاتورة لديها دفعات موجودة",
+    "amountToRemove": "المبلغ المراد إزالته",
+    "remainingPayments": "الدفعات المتبقية",
+    "newBalanceDue": "الرصيد المستحق الجديد"
   },
   "payments": {
     "title": "المدفوعات",

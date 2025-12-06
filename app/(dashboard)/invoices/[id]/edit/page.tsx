@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getInvoice } from "@/actions/invoices";
 import { getClients } from "@/actions/clients";
+import { getPaymentsByInvoice } from "@/actions/payments";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { InvoiceForm } from "@/components/invoices/invoice-form";
@@ -15,15 +16,19 @@ export default async function EditInvoicePage({
   params,
 }: EditInvoicePageProps) {
   const { id } = await params;
-  const [invoice, clients] = await Promise.all([getInvoice(id), getClients()]);
+  const [invoice, clients, payments] = await Promise.all([
+    getInvoice(id),
+    getClients(),
+    getPaymentsByInvoice(id),
+  ]);
   const t = await getTranslations("invoices");
 
   if (!invoice) {
     notFound();
   }
 
-  // Only allow editing draft invoices
-  if (invoice.status !== "draft") {
+  // Only cancelled invoices cannot be edited
+  if (invoice.status === "cancelled") {
     redirect(`/invoices/${id}`);
   }
 
@@ -43,7 +48,7 @@ export default async function EditInvoicePage({
         </div>
       </div>
 
-      <InvoiceForm clients={clients} invoice={invoice} />
+      <InvoiceForm clients={clients} invoice={invoice} payments={payments} />
     </div>
   );
 }

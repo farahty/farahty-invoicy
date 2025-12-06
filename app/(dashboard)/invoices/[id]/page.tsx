@@ -84,14 +84,14 @@ export default async function InvoiceDetailPage({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <InvoiceStatusActions invoice={invoice} />
-          {invoice.status === "draft" && (
-            <Link href={`/invoices/${invoice.id}/edit`}>
-              <Button variant="outline" className="gap-2">
-                <Edit className="h-4 w-4" />
-                <span className="hidden sm:inline">{tCommon("edit")}</span>
-              </Button>
-            </Link>
-          )}
+
+          <Link href={`/invoices/${invoice.id}/edit`}>
+            <Button variant="outline" className="gap-2">
+              <Edit className="h-4 w-4" />
+              <span className="hidden sm:inline">{tCommon("edit")}</span>
+            </Button>
+          </Link>
+
           <a href={`/api/invoices/${invoice.id}/pdf`} target="_blank">
             <Button variant="outline" className="gap-2">
               <Download className="h-4 w-4" />

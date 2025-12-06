@@ -2,6 +2,7 @@
 
 import {
   db,
+  dbPool,
   invoices,
   invoiceItems,
   clients,
@@ -9,7 +10,7 @@ import {
   type InvoiceStatus,
 } from "@/db";
 import { organizations, payments } from "@/db/schema";
-import { eq, and, desc, ilike } from "drizzle-orm";
+import { eq, and, desc, ilike, ne } from "drizzle-orm";
 import { requireOrgAuth } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -342,6 +343,241 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
   revalidatePath(`/invoices/${id}`);
   revalidatePath("/dashboard");
   return { success: true, invoice };
+}
+
+export async function updateInvoiceWithPaymentRemovals(
+  id: string,
+  data: InvoiceInput,
+  paymentIdsToRemove: string[]
+) {
+  const { activeOrganization } = await requireOrgAuth();
+
+  if (!activeOrganization) {
+    return { success: false, error: "No active organization" };
+  }
+
+  const validated = invoiceSchema.parse(data);
+
+  // Verify invoice ownership
+  const existing = await db.query.invoices.findFirst({
+    where: and(
+      eq(invoices.id, id),
+      eq(invoices.organizationId, activeOrganization.id)
+    ),
+    with: {
+      payments: true,
+    },
+  });
+
+  if (!existing) {
+    return { success: false, error: "Invoice not found" };
+  }
+
+  // Verify client ownership
+  const client = await db.query.clients.findFirst({
+    where: and(
+      eq(clients.id, validated.clientId),
+      eq(clients.organizationId, activeOrganization.id)
+    ),
+  });
+
+  if (!client) {
+    return { success: false, error: "Client not found" };
+  }
+
+  // Verify all payment IDs to remove belong to this invoice
+  const existingPaymentIds = existing.payments
+    .filter((p) => !p.deletedAt)
+    .map((p) => p.id);
+
+  const invalidPaymentIds = paymentIdsToRemove.filter(
+    (pid) => !existingPaymentIds.includes(pid)
+  );
+
+  if (invalidPaymentIds.length > 0) {
+    return { success: false, error: "Invalid payment IDs provided" };
+  }
+
+  // Calculate new totals
+  const subtotal = validated.items.reduce(
+    (sum, item) => sum + item.quantity * item.rate,
+    0
+  );
+  const taxAmount = (subtotal * validated.taxRate) / 100;
+  const total = subtotal + taxAmount;
+
+  // Calculate remaining payments after removal
+  const paymentsToKeep = existing.payments.filter(
+    (p) => !p.deletedAt && !paymentIdsToRemove.includes(p.id)
+  );
+  const newAmountPaid = paymentsToKeep.reduce(
+    (sum, p) => sum + parseFloat(p.amount),
+    0
+  );
+  const newBalanceDue = total - newAmountPaid;
+
+  // Validate that remaining payments don't exceed new total
+  if (newAmountPaid > total) {
+    return {
+      success: false,
+      error:
+        "Remaining payments exceed the new invoice total. Please remove more payments.",
+    };
+  }
+
+  // Determine new status
+  let newStatus: InvoiceStatus;
+  if (newBalanceDue <= 0 && newAmountPaid > 0) {
+    newStatus = "paid";
+  } else if (newAmountPaid > 0 && newBalanceDue > 0) {
+    newStatus = "partial";
+  } else if (existing.sentAt) {
+    // If was previously sent and now has no payments, go back to sent
+    newStatus = "sent";
+  } else {
+    newStatus = "draft";
+  }
+
+  // Store removed payment details for activity log (only active payments that will be removed)
+  const removedPayments = existing.payments
+    .filter((p) => !p.deletedAt && paymentIdsToRemove.includes(p.id))
+    .map((p) => ({
+      id: p.id,
+      amount: p.amount,
+      paymentMethod: p.paymentMethod,
+      paymentDate: p.paymentDate,
+    }));
+
+  try {
+    // Use transaction to ensure all updates succeed or fail together
+    const result = await dbPool.transaction(async (tx) => {
+      // Soft-delete selected payments
+      if (paymentIdsToRemove.length > 0) {
+        for (const paymentId of paymentIdsToRemove) {
+          await tx
+            .update(payments)
+            .set({ deletedAt: new Date() })
+            .where(eq(payments.id, paymentId));
+        }
+      }
+
+      // Update invoice
+      const [invoice] = await tx
+        .update(invoices)
+        .set({
+          clientId: validated.clientId,
+          date: validated.date,
+          dueDate: validated.dueDate,
+          subtotal: subtotal.toFixed(2),
+          taxRate: validated.taxRate.toFixed(2),
+          taxAmount: taxAmount.toFixed(2),
+          total: total.toFixed(2),
+          amountPaid: newAmountPaid.toFixed(2),
+          balanceDue: newBalanceDue.toFixed(2),
+          status: newStatus,
+          paidAt: newStatus === "paid" ? new Date() : null,
+          notes: validated.notes,
+          terms: validated.terms,
+          updatedAt: new Date(),
+        })
+        .where(eq(invoices.id, id))
+        .returning();
+
+      // Delete existing items and insert new ones
+      await tx.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
+
+      const itemsToInsert = validated.items.map((item, index) => ({
+        invoiceId: invoice.id,
+        description: item.description,
+        quantity: String(Math.round(item.quantity)),
+        rate: item.rate.toFixed(2),
+        amount: (item.quantity * item.rate).toFixed(2),
+        sortOrder: index,
+      }));
+
+      await tx.insert(invoiceItems).values(itemsToInsert);
+
+      // Recalculate client balance within transaction
+      const clientInvoices = await tx.query.invoices.findMany({
+        where: and(
+          eq(invoices.clientId, invoice.clientId),
+          ne(invoices.status, "cancelled")
+        ),
+      });
+
+      const totalBalance = clientInvoices.reduce(
+        (sum, inv) => sum + parseFloat(inv.balanceDue),
+        0
+      );
+
+      await tx
+        .update(clients)
+        .set({
+          balance: totalBalance.toString(),
+          updatedAt: new Date(),
+        })
+        .where(eq(clients.id, invoice.clientId));
+
+      return invoice;
+    });
+
+    // Log activity for invoice update (outside transaction since it's not critical)
+    await logActivity({
+      entityType: "invoice",
+      entityId: result.id,
+      entityName: result.invoiceNumber,
+      action: "updated",
+      previousValues: {
+        total: existing.total,
+        amountPaid: existing.amountPaid,
+        status: existing.status,
+      },
+      newValues: {
+        total: total.toFixed(2),
+        amountPaid: newAmountPaid.toFixed(2),
+        status: newStatus,
+        itemCount: validated.items.length,
+      },
+      details: {
+        paymentsRemoved: removedPayments.length,
+        totalChanged: existing.total !== total.toFixed(2),
+        statusChanged: existing.status !== newStatus,
+      },
+    });
+
+    // Log activity for each removed payment
+    for (const removedPayment of removedPayments) {
+      await logActivity({
+        entityType: "payment",
+        entityId: removedPayment.id,
+        entityName: `₪${parseFloat(removedPayment.amount).toLocaleString()}`,
+        action: "payment_deleted",
+        previousValues: {
+          amount: removedPayment.amount,
+          paymentMethod: removedPayment.paymentMethod,
+          paymentDate: removedPayment.paymentDate,
+        },
+        details: {
+          invoiceId: result.id,
+          invoiceNumber: result.invoiceNumber,
+          reason: "removed_during_invoice_edit",
+        },
+      });
+    }
+
+    revalidatePath("/invoices");
+    revalidatePath(`/invoices/${id}`);
+    revalidatePath("/dashboard");
+    revalidatePath("/clients");
+
+    return { success: true, invoice: result };
+  } catch (error) {
+    console.error("Failed to update invoice with payment removals:", error);
+    return {
+      success: false,
+      error: "Failed to update invoice. Please try again.",
+    };
+  }
 }
 
 export async function updateInvoiceStatus(id: string, status: InvoiceStatus) {

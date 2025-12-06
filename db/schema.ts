@@ -282,6 +282,7 @@ export const payments = pgTable(
     notes: text("notes"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     createdBy: text("created_by").references(() => users.id),
+    deletedAt: timestamp("deleted_at"),
   },
   (table) => [
     index("payments_invoice_id_idx").on(table.invoiceId),

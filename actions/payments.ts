@@ -1,8 +1,8 @@
 "use server";
 
-import { db } from "@/db";
+import { db, dbPool } from "@/db";
 import { payments, invoices, clients, PaymentMethod } from "@/db/schema";
-import { eq, sql, desc, and, ne } from "drizzle-orm";
+import { eq, sql, desc, and, ne, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireOrgAuth } from "@/lib/session";
 import { logActivity } from "./activity";
@@ -48,22 +48,7 @@ export async function recordPayment(data: {
     return { error: "Payment amount cannot exceed balance due" };
   }
 
-  // Create payment record
-  const [payment] = await db
-    .insert(payments)
-    .values({
-      invoiceId: data.invoiceId,
-      organizationId: activeOrganization.id,
-      amount: paymentAmount.toString(),
-      paymentDate: data.paymentDate,
-      paymentMethod: data.paymentMethod,
-      reference: data.reference,
-      notes: data.notes,
-      createdBy: user.id,
-    })
-    .returning();
-
-  // Update invoice amounts
+  // Calculate new values
   const newAmountPaid = parseFloat(invoice.amountPaid) + paymentAmount;
   const newBalanceDue = parseFloat(invoice.total) - newAmountPaid;
 
@@ -75,45 +60,92 @@ export async function recordPayment(data: {
     newStatus = "partial";
   }
 
-  await db
-    .update(invoices)
-    .set({
-      amountPaid: newAmountPaid.toString(),
-      balanceDue: newBalanceDue.toString(),
-      status: newStatus,
-      paidAt: newStatus === "paid" ? new Date() : invoice.paidAt,
-      updatedAt: new Date(),
-    })
-    .where(eq(invoices.id, data.invoiceId));
+  try {
+    // Use transaction to ensure all updates succeed or fail together
+    const payment = await dbPool.transaction(async (tx) => {
+      // Create payment record
+      const [payment] = await tx
+        .insert(payments)
+        .values({
+          invoiceId: data.invoiceId,
+          organizationId: activeOrganization.id,
+          amount: paymentAmount.toString(),
+          paymentDate: data.paymentDate,
+          paymentMethod: data.paymentMethod,
+          reference: data.reference,
+          notes: data.notes,
+          createdBy: user.id,
+        })
+        .returning();
 
-  // Update client balance
-  await recalculateClientBalance(invoice.clientId);
+      // Update invoice amounts
+      await tx
+        .update(invoices)
+        .set({
+          amountPaid: newAmountPaid.toString(),
+          balanceDue: newBalanceDue.toString(),
+          status: newStatus,
+          paidAt: newStatus === "paid" ? new Date() : invoice.paidAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(invoices.id, data.invoiceId));
 
-  // Log activity for the invoice
-  await logActivity({
-    entityType: "invoice",
-    entityId: data.invoiceId,
-    entityName: invoice.invoiceNumber,
-    action: "payment_recorded",
-    newValues: {
-      amount: paymentAmount,
-      paymentMethod: data.paymentMethod,
-      reference: data.reference,
-    },
-    details: {
-      paymentId: payment.id,
-      previousBalance: balanceDue,
-      newBalance: newBalanceDue,
-      invoiceStatus: newStatus,
-    },
-  });
+      // Recalculate client balance within transaction
+      const clientInvoices = await tx.query.invoices.findMany({
+        where: eq(invoices.clientId, invoice.clientId),
+      });
 
-  revalidatePath(`/invoices/${data.invoiceId}`);
-  revalidatePath("/invoices");
-  revalidatePath("/clients");
-  revalidatePath("/dashboard");
+      const totalBalance = clientInvoices
+        .filter((inv) => inv.status !== "cancelled")
+        .reduce((sum, inv) => {
+          // Use updated balance for current invoice
+          if (inv.id === data.invoiceId) {
+            return sum + newBalanceDue;
+          }
+          return sum + parseFloat(inv.balanceDue);
+        }, 0);
 
-  return { success: true, payment };
+      await tx
+        .update(clients)
+        .set({
+          balance: totalBalance.toString(),
+          updatedAt: new Date(),
+        })
+        .where(eq(clients.id, invoice.clientId));
+
+      return payment;
+    });
+
+    // Log activity for the payment (outside transaction since it's not critical)
+    await logActivity({
+      entityType: "payment",
+      entityId: payment.id,
+      entityName: `₪${paymentAmount.toLocaleString()}`,
+      action: "payment_recorded",
+      newValues: {
+        amount: paymentAmount,
+        paymentMethod: data.paymentMethod,
+        reference: data.reference,
+      },
+      details: {
+        invoiceId: data.invoiceId,
+        invoiceNumber: invoice.invoiceNumber,
+        previousBalance: balanceDue,
+        newBalance: newBalanceDue,
+        invoiceStatus: newStatus,
+      },
+    });
+
+    revalidatePath(`/invoices/${data.invoiceId}`);
+    revalidatePath("/invoices");
+    revalidatePath("/clients");
+    revalidatePath("/dashboard");
+
+    return { success: true, payment };
+  } catch (error) {
+    console.error("Failed to record payment:", error);
+    return { error: "Failed to record payment. Please try again." };
+  }
 }
 
 export async function getPaymentsByInvoice(invoiceId: string) {
@@ -126,7 +158,8 @@ export async function getPaymentsByInvoice(invoiceId: string) {
   const invoicePayments = await db.query.payments.findMany({
     where: and(
       eq(payments.invoiceId, invoiceId),
-      eq(payments.organizationId, activeOrganization.id)
+      eq(payments.organizationId, activeOrganization.id),
+      isNull(payments.deletedAt)
     ),
     with: {
       createdByUser: true,
@@ -144,11 +177,12 @@ export async function deletePayment(paymentId: string) {
     return { error: "No active organization" };
   }
 
-  // Get the payment
+  // Get the payment (only if not already deleted)
   const payment = await db.query.payments.findFirst({
     where: and(
       eq(payments.id, paymentId),
-      eq(payments.organizationId, activeOrganization.id)
+      eq(payments.organizationId, activeOrganization.id),
+      isNull(payments.deletedAt)
     ),
   });
 
@@ -165,50 +199,79 @@ export async function deletePayment(paymentId: string) {
     return { error: "Invoice not found" };
   }
 
-  // Delete the payment
-  await db.delete(payments).where(eq(payments.id, paymentId));
+  // Execute all database operations in a transaction
+  const result = await dbPool.transaction(async (tx) => {
+    // Soft-delete the payment
+    await tx
+      .update(payments)
+      .set({ deletedAt: new Date() })
+      .where(eq(payments.id, paymentId));
 
-  // Recalculate invoice amounts
-  const remainingPayments = await db.query.payments.findMany({
-    where: eq(payments.invoiceId, payment.invoiceId),
+    // Recalculate invoice amounts (excluding soft-deleted payments)
+    const remainingPayments = await tx.query.payments.findMany({
+      where: and(
+        eq(payments.invoiceId, payment.invoiceId),
+        isNull(payments.deletedAt)
+      ),
+    });
+
+    const totalPaid = remainingPayments.reduce(
+      (sum, p) => sum + parseFloat(p.amount),
+      0
+    );
+    const newBalanceDue = parseFloat(invoice.total) - totalPaid;
+
+    // Determine new status
+    let newStatus = invoice.status;
+    if (newBalanceDue <= 0 && totalPaid > 0) {
+      newStatus = "paid";
+    } else if (totalPaid > 0) {
+      newStatus = "partial";
+    } else {
+      // Revert to sent or draft based on sentAt
+      newStatus = invoice.sentAt ? "sent" : "draft";
+    }
+
+    await tx
+      .update(invoices)
+      .set({
+        amountPaid: totalPaid.toString(),
+        balanceDue: newBalanceDue.toString(),
+        status: newStatus,
+        paidAt: newStatus === "paid" ? invoice.paidAt : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(invoices.id, payment.invoiceId));
+
+    // Recalculate client balance within transaction
+    const clientInvoices = await tx.query.invoices.findMany({
+      where: and(
+        eq(invoices.clientId, invoice.clientId),
+        ne(invoices.status, "cancelled")
+      ),
+    });
+
+    const totalBalance = clientInvoices.reduce(
+      (sum, inv) => sum + parseFloat(inv.balanceDue),
+      0
+    );
+
+    await tx
+      .update(clients)
+      .set({
+        balance: totalBalance.toString(),
+        updatedAt: new Date(),
+      })
+      .where(eq(clients.id, invoice.clientId));
+
+    return { newStatus, newBalanceDue };
   });
 
-  const totalPaid = remainingPayments.reduce(
-    (sum, p) => sum + parseFloat(p.amount),
-    0
-  );
-  const newBalanceDue = parseFloat(invoice.total) - totalPaid;
-
-  // Determine new status
-  let newStatus = invoice.status;
-  if (newBalanceDue <= 0) {
-    newStatus = "paid";
-  } else if (totalPaid > 0) {
-    newStatus = "partial";
-  } else {
-    // Revert to sent or draft based on sentAt
-    newStatus = invoice.sentAt ? "sent" : "draft";
-  }
-
-  await db
-    .update(invoices)
-    .set({
-      amountPaid: totalPaid.toString(),
-      balanceDue: newBalanceDue.toString(),
-      status: newStatus,
-      paidAt: newStatus === "paid" ? invoice.paidAt : null,
-      updatedAt: new Date(),
-    })
-    .where(eq(invoices.id, payment.invoiceId));
-
-  // Update client balance
-  await recalculateClientBalance(invoice.clientId);
-
-  // Log activity for the invoice
+  // Log activity outside transaction (non-critical)
   await logActivity({
-    entityType: "invoice",
-    entityId: payment.invoiceId,
-    entityName: invoice.invoiceNumber,
+    entityType: "payment",
+    entityId: payment.id,
+    entityName: `₪${parseFloat(payment.amount).toLocaleString()}`,
     action: "payment_deleted",
     previousValues: {
       amount: payment.amount,
@@ -216,8 +279,10 @@ export async function deletePayment(paymentId: string) {
       paymentDate: payment.paymentDate,
     },
     details: {
-      newInvoiceStatus: newStatus,
-      newBalanceDue: newBalanceDue,
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      newInvoiceStatus: result.newStatus,
+      newBalanceDue: result.newBalanceDue,
     },
   });
 
@@ -263,14 +328,19 @@ export async function getPaymentStats() {
     return null;
   }
 
-  // Get payment statistics
+  // Get payment statistics (excluding soft-deleted payments)
   const stats = await db
     .select({
       totalPayments: sql<number>`count(*)`,
       totalAmount: sql<number>`coalesce(sum(${payments.amount}::numeric), 0)`,
     })
     .from(payments)
-    .where(eq(payments.organizationId, activeOrganization.id));
+    .where(
+      and(
+        eq(payments.organizationId, activeOrganization.id),
+        isNull(payments.deletedAt)
+      )
+    );
 
   return stats[0];
 }
