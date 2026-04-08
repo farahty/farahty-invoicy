@@ -55,7 +55,7 @@ export default async function InvoiceDetailPage({
   const balanceDue = parseFloat(invoice.balanceDue);
   const hasBalance = balanceDue > 0;
   const canRecordPayment =
-    hasBalance && invoice.status !== "cancelled" && invoice.status !== "draft";
+    hasBalance && invoice.status !== "cancelled";
 
   return (
     <div className="space-y-6">
