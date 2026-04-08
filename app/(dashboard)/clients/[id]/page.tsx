@@ -26,10 +26,10 @@ interface ClientDetailPageProps {
 
 const statusStyles: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
-  sent: "bg-chart-4/15 text-chart-4",
-  partial: "bg-chart-3/15 text-chart-3",
-  paid: "bg-chart-2/15 text-chart-2",
-  overdue: "bg-destructive/10 text-destructive",
+  sent: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  partial: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  paid: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+  overdue: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
   cancelled: "bg-muted text-muted-foreground",
 };
 

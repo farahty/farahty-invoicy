@@ -21,10 +21,10 @@ interface InvoicesPageProps {
 
 const statusStyles: Record<InvoiceStatus, string> = {
   draft: "bg-muted text-muted-foreground hover:bg-muted",
-  sent: "bg-chart-4/15 text-chart-4 hover:bg-chart-4/20",
-  partial: "bg-chart-3/15 text-chart-3 hover:bg-chart-3/20",
-  paid: "bg-chart-2/15 text-chart-2 hover:bg-chart-2/20",
-  overdue: "bg-destructive/10 text-destructive hover:bg-destructive/15",
+  sent: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800",
+  partial: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-800",
+  paid: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-800",
+  overdue: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-800",
   cancelled: "bg-muted text-muted-foreground hover:bg-muted",
 };
 
@@ -160,8 +160,7 @@ export default async function InvoicesPage({
                           variant="secondary"
                           className={statusStyles[invoice.status]}
                         >
-                          {invoice.status.charAt(0).toUpperCase() +
-                            invoice.status.slice(1)}
+                          {t(`statuses.${invoice.status}`)}
                         </Badge>
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -193,8 +192,7 @@ export default async function InvoicesPage({
                         variant="secondary"
                         className={statusStyles[invoice.status]}
                       >
-                        {invoice.status.charAt(0).toUpperCase() +
-                          invoice.status.slice(1)}
+                        {t(`statuses.${invoice.status}`)}
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between text-sm">
