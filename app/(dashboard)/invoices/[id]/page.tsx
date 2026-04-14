@@ -14,6 +14,7 @@ import { RecordPaymentDialog } from "@/components/invoices/record-payment-dialog
 import { PaymentHistory } from "@/components/invoices/payment-history";
 import type { InvoiceStatus } from "@/db/schema";
 import { getTranslations } from "next-intl/server";
+import { calculateInvoiceTotals } from "@/lib/invoice-totals";
 
 interface InvoiceDetailPageProps {
   params: Promise<{ id: string }>;
@@ -53,6 +54,16 @@ export default async function InvoiceDetailPage({
   };
 
   const balanceDue = parseFloat(invoice.balanceDue);
+  const discountValue = parseFloat(invoice.discountValue) || 0;
+  const { discountAmount } = calculateInvoiceTotals({
+    items: invoice.items.map((item) => ({
+      quantity: parseFloat(item.quantity),
+      rate: parseFloat(item.rate),
+    })),
+    taxRate: parseFloat(invoice.taxRate),
+    discountType: invoice.discountType,
+    discountValue,
+  });
   const hasBalance = balanceDue > 0;
   const canRecordPayment =
     hasBalance && invoice.status !== "cancelled";
@@ -199,6 +210,17 @@ export default async function InvoiceDetailPage({
                   <span>{t("subtotal")}</span>
                   <span>{formatCurrency(invoice.subtotal)}</span>
                 </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-destructive">
+                    <span>
+                      {t("discount")}
+                      {invoice.discountType === "percent"
+                        ? ` (${invoice.discountValue}%)`
+                        : ""}
+                    </span>
+                    <span>−{formatCurrency(discountAmount)}</span>
+                  </div>
+                )}
                 {parseFloat(invoice.taxRate) > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>
