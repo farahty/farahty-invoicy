@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import {
   Document,
@@ -9,10 +10,19 @@ import {
 } from "@react-pdf/renderer";
 import type { Invoice, Client, InvoiceItem, Organization } from "@/db/schema";
 
-const fontPath = (file: string) =>
-  path.join(process.cwd(), "public", "fonts", file);
+// Resolve font files from disk at module init. Using local paths means
+// react-pdf uses fontkit.openSync internally instead of async fetch, which
+// eliminates the "Cannot read properties of undefined (reading 'id')"
+// crash inside @react-pdf/textkit when a remote font fails to load in
+// time during RTL bidi reordering.
+const fontPath = (file: string): string => {
+  const fontFile = path.join(process.cwd(), "public", "fonts", file);
+  if (!fs.existsSync(fontFile)) {
+    throw new Error(`PDF font file missing at runtime: ${fontFile}`);
+  }
+  return fontFile;
+};
 
-// Register Arabic font for RTL support
 Font.register({
   family: "Noto Sans Arabic",
   fonts: [
@@ -22,13 +32,11 @@ Font.register({
   ],
 });
 
-// Register Noto Sans Hebrew for shekel symbol support
 Font.register({
   family: "Noto Sans Hebrew",
   src: fontPath("noto-sans-hebrew-400.woff"),
 });
 
-// Register Inter for modern English typography
 Font.register({
   family: "Inter",
   fonts: [
