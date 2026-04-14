@@ -107,7 +107,7 @@ export function InvoiceForm({
         : format(new Date(), "yyyy-MM-dd"),
       taxRate: invoice ? parseFloat(invoice.taxRate) : 0,
       discountType: invoice?.discountType ?? "fixed",
-      discountValue: invoice ? parseFloat(invoice.discountValue) : 0,
+      discountValue: invoice ? parseFloat(invoice.discountValue) || 0 : 0,
       notes: invoice?.notes || "",
       terms: invoice?.terms || "",
       items: invoice?.items.map((item) => ({
