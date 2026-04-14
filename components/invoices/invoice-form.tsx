@@ -125,14 +125,26 @@ export function InvoiceForm({
 
   const watchedItems = form.watch("items");
   const watchedTaxRate = form.watch("taxRate");
+  const watchedDiscountType = form.watch("discountType");
+  const watchedDiscountValue = form.watch("discountValue");
 
-  // Calculate totals
+  // Calculate live totals — same order as server: subtotal → discount → tax → total
   const subtotal = watchedItems.reduce(
     (sum, item) => sum + (item.quantity || 0) * (item.rate || 0),
     0
   );
-  const taxAmount = (subtotal * (watchedTaxRate || 0)) / 100;
-  const total = subtotal + taxAmount;
+  const discountAmount = Math.max(
+    0,
+    Math.min(
+      watchedDiscountType === "percent"
+        ? subtotal * ((watchedDiscountValue || 0) / 100)
+        : watchedDiscountValue || 0,
+      subtotal
+    )
+  );
+  const discountedSubtotal = subtotal - discountAmount;
+  const taxAmount = (discountedSubtotal * (watchedTaxRate || 0)) / 100;
+  const total = discountedSubtotal + taxAmount;
 
   const formatCurrency = (amount: number) => {
     const formatted = amount.toLocaleString("en-US", {
@@ -140,6 +152,20 @@ export function InvoiceForm({
       maximumFractionDigits: 2,
     });
     return `${formatted} ₪`;
+  };
+
+  const KNOWN_DISCOUNT_ERRORS = new Set([
+    "discountNegative",
+    "discountPercentOver100",
+    "discountExceedsSubtotal",
+  ]);
+
+  const handleActionError = (error: string | undefined, fallback: string) => {
+    if (error && KNOWN_DISCOUNT_ERRORS.has(error)) {
+      form.setError("discountValue", { message: t(`errors.${error}`) });
+    } else {
+      toast.error(error || fallback);
+    }
   };
 
   const onSubmit = async (data: InvoiceFormValues) => {
@@ -171,7 +197,7 @@ export function InvoiceForm({
           router.push(`/invoices/${invoice.id}`);
           router.refresh();
         } else {
-          toast.error(result.error || "Failed to update invoice");
+          handleActionError(result.error, "Failed to update invoice");
         }
       } else {
         const result = await createInvoice(payload);
@@ -179,6 +205,8 @@ export function InvoiceForm({
           toast.success(t("created"));
           router.push(`/invoices/${result.invoice?.id}`);
           router.refresh();
+        } else {
+          handleActionError(result.error, "Failed to create invoice");
         }
       }
     } catch {
@@ -211,7 +239,7 @@ export function InvoiceForm({
         router.push(`/invoices/${invoice.id}`);
         router.refresh();
       } else {
-        toast.error(result.error || "Failed to update invoice");
+        handleActionError(result.error, "Failed to update invoice");
       }
     } catch {
       toast.error("Something went wrong");
@@ -518,6 +546,72 @@ export function InvoiceForm({
                     <div className="flex justify-between text-muted-foreground">
                       <span>{t("subtotal")}</span>
                       <span>{formatCurrency(subtotal)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">
+                        {t("discount")}
+                      </span>
+                      <FormField
+                        control={form.control}
+                        name="discountType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <div className="flex rounded-md border border-input">
+                                <button
+                                  type="button"
+                                  onClick={() => field.onChange("fixed")}
+                                  className={
+                                    "px-2 py-1 text-xs " +
+                                    (field.value === "fixed"
+                                      ? "bg-accent text-accent-foreground"
+                                      : "text-muted-foreground")
+                                  }
+                                >
+                                  ₪
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => field.onChange("percent")}
+                                  className={
+                                    "px-2 py-1 text-xs border-l border-input " +
+                                    (field.value === "percent"
+                                      ? "bg-accent text-accent-foreground"
+                                      : "text-muted-foreground")
+                                  }
+                                >
+                                  %
+                                </button>
+                              </div>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="discountValue"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="text-right"
+                                value={field.value}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <span className="w-24 text-right text-destructive">
+                        −{formatCurrency(discountAmount)}
+                      </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-muted-foreground">{t("tax")}</span>
