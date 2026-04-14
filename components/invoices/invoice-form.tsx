@@ -61,6 +61,12 @@ const invoiceSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 
+const KNOWN_DISCOUNT_ERRORS = new Set([
+  "discountNegative",
+  "discountPercentOver100",
+  "discountExceedsSubtotal",
+]);
+
 interface InvoiceFormProps {
   clients: Client[];
   invoice?: Invoice & { items: InvoiceItem[] };
@@ -153,12 +159,6 @@ export function InvoiceForm({
     });
     return `${formatted} ₪`;
   };
-
-  const KNOWN_DISCOUNT_ERRORS = new Set([
-    "discountNegative",
-    "discountPercentOver100",
-    "discountExceedsSubtotal",
-  ]);
 
   const handleActionError = (error: string | undefined, fallback: string) => {
     if (error && KNOWN_DISCOUNT_ERRORS.has(error)) {
@@ -560,9 +560,11 @@ export function InvoiceForm({
                               <div className="flex rounded-md border border-input">
                                 <button
                                   type="button"
+                                  aria-pressed={field.value === "fixed"}
+                                  aria-label={t("discountType.fixed")}
                                   onClick={() => field.onChange("fixed")}
                                   className={
-                                    "px-2 py-1 text-xs " +
+                                    "px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
                                     (field.value === "fixed"
                                       ? "bg-accent text-accent-foreground"
                                       : "text-muted-foreground")
@@ -572,9 +574,11 @@ export function InvoiceForm({
                                 </button>
                                 <button
                                   type="button"
+                                  aria-pressed={field.value === "percent"}
+                                  aria-label={t("discountType.percent")}
                                   onClick={() => field.onChange("percent")}
                                   className={
-                                    "px-2 py-1 text-xs border-l border-input " +
+                                    "px-2 py-1 text-xs border-s border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
                                     (field.value === "percent"
                                       ? "bg-accent text-accent-foreground"
                                       : "text-muted-foreground")
