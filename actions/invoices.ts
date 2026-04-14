@@ -153,24 +153,27 @@ export async function createInvoice(data: InvoiceInput) {
     return { success: false, error: "Client not found" };
   }
 
-  // Calculate totals
-  const { subtotal, discountAmount, taxAmount, total } = calculateInvoiceTotals(
-    {
-      items: validated.items,
-      taxRate: validated.taxRate,
-      discountType: validated.discountType,
-      discountValue: validated.discountValue,
-    }
+  // Compute the subtotal up front to validate the discount against.
+  const preliminarySubtotal = validated.items.reduce(
+    (sum, item) => sum + item.quantity * item.rate,
+    0
   );
 
   const discountError = validateDiscount(
     validated.discountType,
     validated.discountValue,
-    subtotal
+    preliminarySubtotal
   );
   if (discountError) {
     return { success: false, error: discountError };
   }
+
+  const { subtotal, taxAmount, total } = calculateInvoiceTotals({
+    items: validated.items,
+    taxRate: validated.taxRate,
+    discountType: validated.discountType,
+    discountValue: validated.discountValue,
+  });
 
   // Generate invoice number
   const invoiceNumber = await generateInvoiceNumber();
@@ -281,22 +284,27 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
     return { success: false, error: "Client not found" };
   }
 
-  // Calculate totals
+  // Compute the subtotal up front to validate the discount against.
+  const preliminarySubtotal = validated.items.reduce(
+    (sum, item) => sum + item.quantity * item.rate,
+    0
+  );
+
+  const discountError = validateDiscount(
+    validated.discountType,
+    validated.discountValue,
+    preliminarySubtotal
+  );
+  if (discountError) {
+    return { success: false, error: discountError };
+  }
+
   const { subtotal, taxAmount, total } = calculateInvoiceTotals({
     items: validated.items,
     taxRate: validated.taxRate,
     discountType: validated.discountType,
     discountValue: validated.discountValue,
   });
-
-  const discountError = validateDiscount(
-    validated.discountType,
-    validated.discountValue,
-    subtotal
-  );
-  if (discountError) {
-    return { success: false, error: discountError };
-  }
 
   // Calculate new balance due (total - amount already paid)
   const amountPaid = parseFloat(existing.amountPaid);
@@ -427,22 +435,27 @@ export async function updateInvoiceWithPaymentRemovals(
     return { success: false, error: "Invalid payment IDs provided" };
   }
 
-  // Calculate new totals
+  // Compute the subtotal up front to validate the discount against.
+  const preliminarySubtotal = validated.items.reduce(
+    (sum, item) => sum + item.quantity * item.rate,
+    0
+  );
+
+  const discountError = validateDiscount(
+    validated.discountType,
+    validated.discountValue,
+    preliminarySubtotal
+  );
+  if (discountError) {
+    return { success: false, error: discountError };
+  }
+
   const { subtotal, taxAmount, total } = calculateInvoiceTotals({
     items: validated.items,
     taxRate: validated.taxRate,
     discountType: validated.discountType,
     discountValue: validated.discountValue,
   });
-
-  const discountError = validateDiscount(
-    validated.discountType,
-    validated.discountValue,
-    subtotal
-  );
-  if (discountError) {
-    return { success: false, error: discountError };
-  }
 
   // Calculate remaining payments after removal
   const paymentsToKeep = existing.payments.filter(
