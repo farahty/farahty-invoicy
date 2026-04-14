@@ -385,7 +385,7 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
       itemCount: "unknown",
       discount: {
         type: existing.discountType,
-        value: existing.discountValue,
+        value: (parseFloat(existing.discountValue) || 0).toFixed(2),
         amount: previousDiscountAmount,
       },
     },
@@ -404,7 +404,9 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
       statusChanged: existing.status !== newStatus,
       discountChanged:
         existing.discountType !== validated.discountType ||
-        parseFloat(existing.discountValue) !== validated.discountValue,
+        Math.abs(
+          (parseFloat(existing.discountValue) || 0) - validated.discountValue
+        ) > 1e-6,
     },
   });
 
@@ -630,7 +632,7 @@ export async function updateInvoiceWithPaymentRemovals(
         amountPaid: existing.amountPaid,
         discount: {
           type: existing.discountType,
-          value: existing.discountValue,
+          value: (parseFloat(existing.discountValue) || 0).toFixed(2),
           amount: previousDiscountAmount,
         },
       },
@@ -650,7 +652,9 @@ export async function updateInvoiceWithPaymentRemovals(
         statusChanged: existing.status !== newStatus,
         discountChanged:
           existing.discountType !== validated.discountType ||
-          parseFloat(existing.discountValue) !== validated.discountValue,
+          Math.abs(
+            (parseFloat(existing.discountValue) || 0) - validated.discountValue
+          ) > 1e-6,
         paymentsRemoved: removedPayments.length,
       },
     });
