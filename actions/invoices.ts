@@ -154,17 +154,27 @@ export async function createInvoice(data: InvoiceInput) {
   }
 
   // Calculate totals
-  const subtotal = validated.items.reduce(
-    (sum, item) => sum + item.quantity * item.rate,
-    0
+  const { subtotal, discountAmount, taxAmount, total } = calculateInvoiceTotals(
+    {
+      items: validated.items,
+      taxRate: validated.taxRate,
+      discountType: validated.discountType,
+      discountValue: validated.discountValue,
+    }
   );
-  const taxAmount = (subtotal * validated.taxRate) / 100;
-  const total = subtotal + taxAmount;
+
+  const discountError = validateDiscount(
+    validated.discountType,
+    validated.discountValue,
+    subtotal
+  );
+  if (discountError) {
+    return { success: false, error: discountError };
+  }
 
   // Generate invoice number
   const invoiceNumber = await generateInvoiceNumber();
 
-  // Create invoice and items in a transaction-like manner
   const [invoice] = await db
     .insert(invoices)
     .values({
@@ -175,6 +185,8 @@ export async function createInvoice(data: InvoiceInput) {
       date: validated.date,
       dueDate: validated.dueDate,
       subtotal: subtotal.toFixed(2),
+      discountType: validated.discountType,
+      discountValue: validated.discountValue.toFixed(2),
       taxRate: validated.taxRate.toFixed(2),
       taxAmount: taxAmount.toFixed(2),
       total: total.toFixed(2),
@@ -270,12 +282,21 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
   }
 
   // Calculate totals
-  const subtotal = validated.items.reduce(
-    (sum, item) => sum + item.quantity * item.rate,
-    0
+  const { subtotal, taxAmount, total } = calculateInvoiceTotals({
+    items: validated.items,
+    taxRate: validated.taxRate,
+    discountType: validated.discountType,
+    discountValue: validated.discountValue,
+  });
+
+  const discountError = validateDiscount(
+    validated.discountType,
+    validated.discountValue,
+    subtotal
   );
-  const taxAmount = (subtotal * validated.taxRate) / 100;
-  const total = subtotal + taxAmount;
+  if (discountError) {
+    return { success: false, error: discountError };
+  }
 
   // Calculate new balance due (total - amount already paid)
   const amountPaid = parseFloat(existing.amountPaid);
@@ -297,6 +318,8 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
       date: validated.date,
       dueDate: validated.dueDate,
       subtotal: subtotal.toFixed(2),
+      discountType: validated.discountType,
+      discountValue: validated.discountValue.toFixed(2),
       taxRate: validated.taxRate.toFixed(2),
       taxAmount: taxAmount.toFixed(2),
       total: total.toFixed(2),
@@ -405,12 +428,21 @@ export async function updateInvoiceWithPaymentRemovals(
   }
 
   // Calculate new totals
-  const subtotal = validated.items.reduce(
-    (sum, item) => sum + item.quantity * item.rate,
-    0
+  const { subtotal, taxAmount, total } = calculateInvoiceTotals({
+    items: validated.items,
+    taxRate: validated.taxRate,
+    discountType: validated.discountType,
+    discountValue: validated.discountValue,
+  });
+
+  const discountError = validateDiscount(
+    validated.discountType,
+    validated.discountValue,
+    subtotal
   );
-  const taxAmount = (subtotal * validated.taxRate) / 100;
-  const total = subtotal + taxAmount;
+  if (discountError) {
+    return { success: false, error: discountError };
+  }
 
   // Calculate remaining payments after removal
   const paymentsToKeep = existing.payments.filter(
@@ -475,6 +507,8 @@ export async function updateInvoiceWithPaymentRemovals(
           date: validated.date,
           dueDate: validated.dueDate,
           subtotal: subtotal.toFixed(2),
+          discountType: validated.discountType,
+          discountValue: validated.discountValue.toFixed(2),
           taxRate: validated.taxRate.toFixed(2),
           taxAmount: taxAmount.toFixed(2),
           total: total.toFixed(2),
@@ -969,6 +1003,8 @@ export async function duplicateInvoice(id: string) {
       subtotal: original.subtotal,
       taxRate: original.taxRate,
       taxAmount: original.taxAmount,
+      discountType: original.discountType,
+      discountValue: original.discountValue,
       total: original.total,
       notes: original.notes,
       terms: original.terms,
