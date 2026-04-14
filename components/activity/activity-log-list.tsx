@@ -40,9 +40,9 @@ interface DiscountSnapshot {
 }
 
 function formatDiscountPart(snapshot: DiscountSnapshot): string {
-  const money = `${snapshot.amount.toFixed(2)} ₪`;
+  const money = `\u2068${snapshot.amount.toFixed(2)} ₪\u2069`;
   return snapshot.type === "percent"
-    ? `${money} (${snapshot.value}%)`
+    ? `${money} \u2068(${snapshot.value}%)\u2069`
     : money;
 }
 
@@ -178,12 +178,10 @@ export function ActivityLogList({
                   const next = (log.newValues as Record<string, unknown>)
                     ?.discount as DiscountSnapshot | undefined;
                   if (!prev || !next) return null;
-                  const userName = log.user?.name || "Unknown User";
                   if (prev.amount === 0) {
                     return (
                       <div className="text-sm text-muted-foreground mt-1">
                         {t("discount.added", {
-                          user: userName,
                           to: formatDiscountPart(next),
                         })}
                       </div>
@@ -192,7 +190,6 @@ export function ActivityLogList({
                   return (
                     <div className="text-sm text-muted-foreground mt-1">
                       {t("discount.changed", {
-                        user: userName,
                         from: formatDiscountPart(prev),
                         to: formatDiscountPart(next),
                       })}
