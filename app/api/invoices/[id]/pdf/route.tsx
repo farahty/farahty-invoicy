@@ -102,7 +102,12 @@ export async function GET(
     if (isNextInternalError(error)) {
       throw error;
     }
-    console.error("PDF generation error:", error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error(
+      `PDF generation error for invoice ${id}:`,
+      error,
+      stack ?? ""
+    );
     return new NextResponse("Failed to generate PDF", { status: 500 });
   }
 }
