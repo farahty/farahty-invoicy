@@ -1,3 +1,4 @@
+import path from "node:path";
 import {
   Document,
   Page,
@@ -8,51 +9,33 @@ import {
 } from "@react-pdf/renderer";
 import type { Invoice, Client, InvoiceItem, Organization } from "@/db/schema";
 
+const fontPath = (file: string) =>
+  path.join(process.cwd(), "public", "fonts", file);
+
 // Register Arabic font for RTL support
 Font.register({
   family: "Noto Sans Arabic",
   fonts: [
-    {
-      src: "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-arabic@5.0.0/files/noto-sans-arabic-arabic-400-normal.woff",
-      fontWeight: 400,
-    },
-    {
-      src: "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-arabic@5.0.0/files/noto-sans-arabic-arabic-600-normal.woff",
-      fontWeight: 600,
-    },
-    {
-      src: "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-arabic@5.0.0/files/noto-sans-arabic-arabic-700-normal.woff",
-      fontWeight: 700,
-    },
+    { src: fontPath("noto-sans-arabic-400.woff"), fontWeight: 400 },
+    { src: fontPath("noto-sans-arabic-600.woff"), fontWeight: 600 },
+    { src: fontPath("noto-sans-arabic-700.woff"), fontWeight: 700 },
   ],
 });
 
 // Register Noto Sans Hebrew for shekel symbol support
 Font.register({
   family: "Noto Sans Hebrew",
-  src: "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-hebrew@5.0.0/files/noto-sans-hebrew-hebrew-400-normal.woff",
+  src: fontPath("noto-sans-hebrew-400.woff"),
 });
 
 // Register Inter for modern English typography
 Font.register({
   family: "Inter",
   fonts: [
-    {
-      src: "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/files/inter-latin-400-normal.woff",
-      fontWeight: 400,
-    },
-    {
-      src: "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/files/inter-latin-500-normal.woff",
-      fontWeight: 500,
-    },
-    {
-      src: "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/files/inter-latin-600-normal.woff",
-      fontWeight: 600,
-    },
-    {
-      src: "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/files/inter-latin-700-normal.woff",
-      fontWeight: 700,
-    },
+    { src: fontPath("inter-400.woff"), fontWeight: 400 },
+    { src: fontPath("inter-500.woff"), fontWeight: 500 },
+    { src: fontPath("inter-600.woff"), fontWeight: 600 },
+    { src: fontPath("inter-700.woff"), fontWeight: 700 },
   ],
 });
 
