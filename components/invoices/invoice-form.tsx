@@ -36,6 +36,7 @@ import {
   getItemSuggestions,
 } from "@/actions/invoices";
 import type { Client, Invoice, InvoiceItem, Payment } from "@/db/schema";
+import { discountTypeEnum } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { PaymentRemovalDialog } from "./payment-removal-dialog";
@@ -51,7 +52,7 @@ const invoiceSchema = z.object({
   date: z.string().min(1, "Date is required"),
   dueDate: z.string().min(1, "Due date is required"),
   taxRate: z.number().min(0).max(100),
-  discountType: z.enum(["fixed", "percent"] as const),
+  discountType: z.enum(discountTypeEnum),
   discountValue: z.number().min(0),
   notes: z.string().optional(),
   terms: z.string().optional(),
@@ -105,8 +106,8 @@ export function InvoiceForm({
         ? format(new Date(invoice.dueDate), "yyyy-MM-dd")
         : format(new Date(), "yyyy-MM-dd"),
       taxRate: invoice ? parseFloat(invoice.taxRate) : 0,
-      discountType: "fixed" as const,
-      discountValue: 0,
+      discountType: invoice?.discountType ?? "fixed",
+      discountValue: invoice ? parseFloat(invoice.discountValue) : 0,
       notes: invoice?.notes || "",
       terms: invoice?.terms || "",
       items: invoice?.items.map((item) => ({
