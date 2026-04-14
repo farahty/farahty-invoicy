@@ -176,7 +176,7 @@ export async function createInvoice(data: InvoiceInput) {
       balanceDue: total.toFixed(2),
       notes: validated.notes,
       terms: validated.terms,
-      status: "draft",
+      status: "overdue",
     })
     .returning();
 
@@ -959,14 +959,14 @@ export async function duplicateInvoice(id: string) {
       clientId: original.clientId,
       invoiceNumber,
       date: new Date(),
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      dueDate: new Date(),
       subtotal: original.subtotal,
       taxRate: original.taxRate,
       taxAmount: original.taxAmount,
       total: original.total,
       notes: original.notes,
       terms: original.terms,
-      status: "draft",
+      status: "overdue",
     })
     .returning();
 

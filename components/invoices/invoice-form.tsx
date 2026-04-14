@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format, addDays } from "date-fns";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -101,7 +101,7 @@ export function InvoiceForm({
         : format(new Date(), "yyyy-MM-dd"),
       dueDate: invoice
         ? format(new Date(invoice.dueDate), "yyyy-MM-dd")
-        : format(addDays(new Date(), 30), "yyyy-MM-dd"),
+        : format(new Date(), "yyyy-MM-dd"),
       taxRate: invoice ? parseFloat(invoice.taxRate) : 0,
       notes: invoice?.notes || "",
       terms: invoice?.terms || "",
