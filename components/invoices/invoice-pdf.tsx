@@ -48,6 +48,12 @@ Font.register({
   ],
 });
 
+// Disable the default word hyphenation splitter. The default callback splits
+// mixed Arabic/Latin words into sub-runs, which then crashes textkit's RTL
+// bidi reordering with "Cannot read properties of undefined (reading 'id')"
+// whenever an invoice contains items like "طقم تطريز tommy".
+Font.registerHyphenationCallback((word) => [word]);
+
 // PDF Translations type
 export interface PDFTranslations {
   invoice: string;
