@@ -9,7 +9,11 @@ import {
   type NewInvoice,
   type InvoiceStatus,
 } from "@/db";
-import { organizations, payments } from "@/db/schema";
+import { organizations, payments, discountTypeEnum } from "@/db/schema";
+import {
+  calculateInvoiceTotals,
+  validateDiscount,
+} from "@/lib/invoice-totals";
 import { eq, and, desc, ilike, ne } from "drizzle-orm";
 import { requireOrgAuth } from "@/lib/session";
 import { revalidatePath } from "next/cache";
@@ -30,6 +34,8 @@ const invoiceSchema = z.object({
   taxRate: z.coerce.number().min(0).max(100).default(0),
   notes: z.string().optional(),
   terms: z.string().optional(),
+  discountType: z.enum(discountTypeEnum).default("fixed"),
+  discountValue: z.coerce.number().min(0).default(0),
   items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
 });
 

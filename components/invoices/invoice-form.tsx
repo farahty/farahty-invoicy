@@ -51,6 +51,8 @@ const invoiceSchema = z.object({
   date: z.string().min(1, "Date is required"),
   dueDate: z.string().min(1, "Due date is required"),
   taxRate: z.number().min(0).max(100),
+  discountType: z.enum(["fixed", "percent"] as const),
+  discountValue: z.number().min(0),
   notes: z.string().optional(),
   terms: z.string().optional(),
   items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
@@ -103,6 +105,8 @@ export function InvoiceForm({
         ? format(new Date(invoice.dueDate), "yyyy-MM-dd")
         : format(new Date(), "yyyy-MM-dd"),
       taxRate: invoice ? parseFloat(invoice.taxRate) : 0,
+      discountType: "fixed" as const,
+      discountValue: 0,
       notes: invoice?.notes || "",
       terms: invoice?.terms || "",
       items: invoice?.items.map((item) => ({
