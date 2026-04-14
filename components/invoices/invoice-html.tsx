@@ -195,6 +195,18 @@ export function renderInvoiceHtml({
   const currency = (amount: string | number): string =>
     `${formatNumber(amount)} <span class="currency-symbol">₪</span>`;
 
+  const subtotalNumber = invoice.items.reduce(
+    (sum, item) =>
+      sum + parseFloat(item.quantity) * parseFloat(item.rate),
+    0
+  );
+  const discountValueNumber = parseFloat(invoice.discountValue) || 0;
+  const rawDiscount =
+    invoice.discountType === "percent"
+      ? subtotalNumber * (discountValueNumber / 100)
+      : discountValueNumber;
+  const discountAmount = Math.max(0, Math.min(rawDiscount, subtotalNumber));
+
   const amountPaid = parseFloat(invoice.amountPaid || "0");
   const balanceDue = parseFloat(invoice.balanceDue || invoice.total);
   const hasPayments = amountPaid > 0;
@@ -532,6 +544,18 @@ export function renderInvoiceHtml({
         <span class="label">${escapeHtml(t.subtotal)}</span>
         <span>${currency(invoice.subtotal)}</span>
       </div>
+      ${
+        discountAmount > 0
+          ? `<div class="totals-row" style="color:#b91c1c;">
+              <span class="label">${escapeHtml(t.discount)}${
+              invoice.discountType === "percent"
+                ? ` (${escapeHtml(invoice.discountValue)}%)`
+                : ""
+            }</span>
+              <span>−${currency(discountAmount)}</span>
+            </div>`
+          : ""
+      }
       ${
         taxRate > 0
           ? `<div class="totals-row">
