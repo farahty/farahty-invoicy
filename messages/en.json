@@ -118,6 +118,11 @@
     "subtotal": "Subtotal",
     "tax": "Tax",
     "taxRate": "Tax Rate",
+    "discount": "Discount",
+    "discountType": {
+      "fixed": "Amount (₪)",
+      "percent": "Percentage (%)"
+    },
     "total": "Total",
     "notes": "Notes",
     "terms": "Terms & Conditions",
@@ -182,7 +187,12 @@
     "hasExistingPayments": "This invoice has existing payments",
     "amountToRemove": "Amount to Remove",
     "remainingPayments": "Remaining Payments",
-    "newBalanceDue": "New Balance Due"
+    "newBalanceDue": "New Balance Due",
+    "errors": {
+      "discountNegative": "Discount must be 0 or greater",
+      "discountPercentOver100": "Discount percentage cannot exceed 100%",
+      "discountExceedsSubtotal": "Discount cannot exceed the subtotal"
+    }
   },
   "payments": {
     "title": "Payments",

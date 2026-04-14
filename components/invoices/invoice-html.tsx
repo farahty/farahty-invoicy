@@ -14,6 +14,7 @@ export interface InvoiceHtmlTranslations {
   amount: string;
   subtotal: string;
   tax: string;
+  discount: string;
   totalDue: string;
   amountPaid: string;
   balanceDue: string;
@@ -38,6 +39,7 @@ export const englishTranslations: InvoiceHtmlTranslations = {
   amount: "Amount",
   subtotal: "Subtotal",
   tax: "Tax",
+  discount: "Discount",
   totalDue: "Total",
   amountPaid: "Paid",
   balanceDue: "Balance Due",
@@ -62,6 +64,7 @@ export const arabicTranslations: InvoiceHtmlTranslations = {
   amount: "المبلغ",
   subtotal: "المجموع الفرعي",
   tax: "الضريبة",
+  discount: "الخصم",
   totalDue: "المجموع",
   amountPaid: "المدفوع",
   balanceDue: "الرصيد المستحق",
