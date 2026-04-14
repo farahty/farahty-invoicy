@@ -1,7 +1,12 @@
-const CACHE_NAME = "farahty-v1";
+// Bump CACHE_NAME whenever the caching policy changes so old caches are
+// evicted on the next visit. Historically this SW cached every HTML page
+// it saw, which caused stale invoice totals to persist across deploys.
+const CACHE_NAME = "farahty-v2";
 const OFFLINE_URL = "/offline";
 
-// Assets to cache on install
+// Only precache truly static, versioned assets. Dynamic HTML must never
+// be served from cache because the server renders fresh data per user
+// and per invoice.
 const STATIC_ASSETS = [
   OFFLINE_URL,
   "/manifest.json",
@@ -9,7 +14,20 @@ const STATIC_ASSETS = [
   "/icons/icon-512x512.png",
 ];
 
-// Install event - cache static assets
+const isStaticAsset = (url) => {
+  const { pathname } = new URL(url);
+  return (
+    pathname.startsWith("/_next/static/") ||
+    pathname.startsWith("/icons/") ||
+    pathname.startsWith("/splash/") ||
+    pathname.startsWith("/fonts/") ||
+    pathname === "/manifest.json" ||
+    /\.(?:png|jpg|jpeg|gif|svg|webp|ico|woff2?|ttf|otf|eot|css|js|map)$/i.test(
+      pathname
+    )
+  );
+};
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
@@ -20,69 +38,76 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Activate event - clean up old caches
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      // Delete old caches
       const cacheNames = await caches.keys();
       await Promise.all(
         cacheNames
           .filter((name) => name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       );
-      // Take control of all pages
       await self.clients.claim();
     })()
   );
 });
 
-// Fetch event - network first, fallback to cache
 self.addEventListener("fetch", (event) => {
-  // Only handle GET requests
   if (event.request.method !== "GET") return;
-
-  // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) return;
-
-  // Skip API requests - always go to network
   if (event.request.url.includes("/api/")) return;
 
-  event.respondWith(
-    (async () => {
-      try {
-        // Try network first
-        const networkResponse = await fetch(event.request);
+  const isNavigation =
+    event.request.mode === "navigate" ||
+    (event.request.destination === "" &&
+      event.request.headers.get("accept")?.includes("text/html"));
 
-        // Cache successful responses
-        if (networkResponse.ok) {
+  // Navigation / HTML: always go to network. Never write HTML to cache.
+  // Falls back to the offline page only when the network is unreachable.
+  if (isNavigation) {
+    event.respondWith(
+      (async () => {
+        try {
+          return await fetch(event.request);
+        } catch {
           const cache = await caches.open(CACHE_NAME);
-          cache.put(event.request, networkResponse.clone());
+          const offline = await cache.match(OFFLINE_URL);
+          return (
+            offline ||
+            new Response("Offline", {
+              status: 503,
+              statusText: "Service Unavailable",
+            })
+          );
         }
+      })()
+    );
+    return;
+  }
 
-        return networkResponse;
-      } catch (error) {
-        // Network failed, try cache
-        const cachedResponse = await caches.match(event.request);
-
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-
-        // If it's a navigation request, show offline page
-        if (event.request.mode === "navigate") {
-          const offlineResponse = await caches.match(OFFLINE_URL);
-          if (offlineResponse) {
-            return offlineResponse;
+  // Static assets: cache-first with network fallback.
+  if (isStaticAsset(event.request.url)) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(event.request);
+        if (cached) return cached;
+        try {
+          const networkResponse = await fetch(event.request);
+          if (networkResponse.ok) {
+            cache.put(event.request, networkResponse.clone());
           }
+          return networkResponse;
+        } catch {
+          return new Response("Offline", {
+            status: 503,
+            statusText: "Service Unavailable",
+          });
         }
+      })()
+    );
+    return;
+  }
 
-        // Return a basic offline response
-        return new Response("Offline", {
-          status: 503,
-          statusText: "Service Unavailable",
-        });
-      }
-    })()
-  );
+  // Everything else: straight to the network, no caching.
 });
