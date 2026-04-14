@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import type { Style } from "@react-pdf/stylesheet";
 import {
   Document,
   Page,
@@ -452,6 +453,42 @@ const Currency = ({
   </Text>
 );
 
+// Normalize user-entered strings before handing them to react-pdf. Embedded
+// newlines (\n, \r, line/paragraph separators) inside RTL text crash
+// @react-pdf/textkit's bidi reordering with "Cannot read properties of
+// undefined (reading 'id')". We also strip zero-width marks that can
+// confuse glyph indexing.
+const sanitizePdfText = (value: string): string =>
+  value
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2028\u2029\uFEFF]/g, "")
+    .replace(/\s*\n\s*/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+const sanitizeOptional = (value: string | null | undefined): string | null => {
+  if (!value) return null;
+  const cleaned = sanitizePdfText(value);
+  return cleaned.length > 0 ? cleaned : null;
+};
+
+// Same as sanitizePdfText but preserves `\n` so callers can render each line
+// as its own <Text> via <MultilineText>. Never pass the returned string to a
+// single <Text> — textkit will crash on embedded newlines in RTL content.
+const sanitizeMultilineOptional = (
+  value: string | null | undefined
+): string | null => {
+  if (!value) return null;
+  const cleaned = value
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2028\u2029\uFEFF]/g, "")
+    .split("\n")
+    .map((line) => line.replace(/\s{2,}/g, " ").trim())
+    .filter((line) => line.length > 0)
+    .join("\n");
+  return cleaned.length > 0 ? cleaned : null;
+};
+
 const formatDate = (date: Date | string, locale: string = "en") => {
   const d = new Date(date);
   const day = d.getDate();
@@ -462,6 +499,30 @@ const formatDate = (date: Date | string, locale: string = "en") => {
   return locale === "ar"
     ? `${day} ${monthName} ${year}`
     : `${monthName} ${day}, ${year}`;
+};
+
+const MultilineText = ({
+  value,
+  style,
+}: {
+  value: string;
+  style?: Style | Style[];
+}) => {
+  const lines = value
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => sanitizePdfText(line))
+    .filter((line) => line.length > 0);
+  if (lines.length === 0) return null;
+  return (
+    <>
+      {lines.map((line, idx) => (
+        <Text key={idx} style={style}>
+          {line}
+        </Text>
+      ))}
+    </>
+  );
 };
 
 export function InvoicePDF({
@@ -479,21 +540,55 @@ export function InvoicePDF({
   const balanceDue = parseFloat(invoice.balanceDue || invoice.total);
   const hasPayments = amountPaid > 0;
 
+  // Sanitize every user-entered string so embedded newlines, bidi control
+  // characters, and stray whitespace can't crash textkit's RTL reordering.
+  const safeOrg = {
+    name: sanitizePdfText(organization.name || ""),
+    address: sanitizeMultilineOptional(organization.address),
+    phone: sanitizeOptional(organization.phone),
+    email: sanitizeOptional(organization.email),
+    taxId: sanitizeOptional(organization.taxId),
+  };
+  const safeClient = {
+    name: sanitizePdfText(client.name || ""),
+    address: sanitizeMultilineOptional(client.address),
+    city: sanitizeOptional(client.city),
+    country: sanitizeOptional(client.country),
+    email: sanitizeOptional(client.email),
+    taxId: sanitizeOptional(client.taxId),
+  };
+  const safeInvoice = {
+    invoiceNumber: sanitizePdfText(invoice.invoiceNumber || ""),
+    notes: sanitizeMultilineOptional(invoice.notes),
+    terms: sanitizeMultilineOptional(invoice.terms),
+  };
+  const safeItems = invoice.items.map((item) => ({
+    ...item,
+    description: sanitizePdfText(item.description || ""),
+  }));
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.brandSection}>
-            <Text style={styles.logo}>{organization.name}</Text>
-            <Text style={styles.brandContact}>
-              {[organization.address, organization.phone, organization.email]
-                .filter(Boolean)
-                .join(" • ")}
-            </Text>
-            {organization.taxId && (
+            <Text style={styles.logo}>{safeOrg.name}</Text>
+            {safeOrg.address && (
+              <MultilineText
+                value={safeOrg.address}
+                style={styles.brandContact}
+              />
+            )}
+            {safeOrg.phone && (
+              <Text style={styles.brandContact}>{safeOrg.phone}</Text>
+            )}
+            {safeOrg.email && (
+              <Text style={styles.brandContact}>{safeOrg.email}</Text>
+            )}
+            {safeOrg.taxId && (
               <Text style={styles.brandContact}>
-                {t.taxId}: {organization.taxId}
+                {t.taxId}: {safeOrg.taxId}
               </Text>
             )}
           </View>
@@ -501,7 +596,7 @@ export function InvoicePDF({
             <Text style={styles.invoiceTitle}>{t.invoice}</Text>
             <Text style={styles.invoiceNumber}>
               {t.invoiceNumber}
-              {invoice.invoiceNumber}
+              {safeInvoice.invoiceNumber}
             </Text>
             {/* Status Badge */}
             {(invoice.status === "paid" ||
@@ -534,21 +629,26 @@ export function InvoicePDF({
           <View style={styles.infoColumn}>
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>{t.billTo}</Text>
-              <Text style={styles.infoTitle}>{client.name}</Text>
-              {client.address && (
-                <Text style={styles.infoText}>{client.address}</Text>
+              <Text style={styles.infoTitle}>{safeClient.name}</Text>
+              {safeClient.address && (
+                <MultilineText
+                  value={safeClient.address}
+                  style={styles.infoText}
+                />
               )}
-              {(client.city || client.country) && (
+              {(safeClient.city || safeClient.country) && (
                 <Text style={styles.infoText}>
-                  {[client.city, client.country].filter(Boolean).join(", ")}
+                  {[safeClient.city, safeClient.country]
+                    .filter(Boolean)
+                    .join(", ")}
                 </Text>
               )}
-              {client.email && (
-                <Text style={styles.infoText}>{client.email}</Text>
+              {safeClient.email && (
+                <Text style={styles.infoText}>{safeClient.email}</Text>
               )}
-              {client.taxId && (
+              {safeClient.taxId && (
                 <Text style={styles.infoText}>
-                  {t.taxId}: {client.taxId}
+                  {t.taxId}: {safeClient.taxId}
                 </Text>
               )}
             </View>
@@ -589,7 +689,7 @@ export function InvoicePDF({
               {t.amount}
             </Text>
           </View>
-          {invoice.items.map((item) => (
+          {safeItems.map((item) => (
             <View key={item.id} style={styles.tableRow}>
               <Text
                 style={[
@@ -658,18 +758,24 @@ export function InvoicePDF({
         </View>
 
         {/* Notes & Terms */}
-        {(invoice.notes || invoice.terms) && (
+        {(safeInvoice.notes || safeInvoice.terms) && (
           <View style={styles.notesSection}>
-            {invoice.notes && (
+            {safeInvoice.notes && (
               <View style={styles.notesBlock}>
                 <Text style={styles.notesTitle}>{t.notes}</Text>
-                <Text style={styles.notesText}>{invoice.notes}</Text>
+                <MultilineText
+                  value={safeInvoice.notes}
+                  style={styles.notesText}
+                />
               </View>
             )}
-            {invoice.terms && (
+            {safeInvoice.terms && (
               <View style={styles.notesBlock}>
                 <Text style={styles.notesTitle}>{t.terms}</Text>
-                <Text style={styles.notesText}>{invoice.terms}</Text>
+                <MultilineText
+                  value={safeInvoice.terms}
+                  style={styles.notesText}
+                />
               </View>
             )}
           </View>
@@ -679,7 +785,7 @@ export function InvoicePDF({
         <View style={styles.footer}>
           <Text style={styles.footerText}>{t.thankYou}</Text>
           <Text style={styles.footerText}>
-            {organization.email || organization.phone || ""}
+            {safeOrg.email || safeOrg.phone || ""}
           </Text>
         </View>
       </Page>
