@@ -433,6 +433,11 @@
       "payment_recorded": "تسجيل دفعة",
       "payment_deleted": "حذف دفعة"
     },
+    "discount": {
+      "added": "أضاف خصماً بقيمة {to}",
+      "changed": "غيّر الخصم من {from} إلى {to}",
+      "createdWith": "أُنشئت مع خصم بقيمة {to}"
+    },
     "descriptions": {
       "client_created": "{user} أنشأ العميل {entity}",
       "client_updated": "{user} حدّث العميل {entity}",

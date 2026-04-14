@@ -433,6 +433,11 @@
       "payment_recorded": "Payment Recorded",
       "payment_deleted": "Payment Deleted"
     },
+    "discount": {
+      "added": "added a discount of {to}",
+      "changed": "changed discount from {from} to {to}",
+      "createdWith": "Created with a discount of {to}"
+    },
     "descriptions": {
       "client_created": "{user} created client {entity}",
       "client_updated": "{user} updated client {entity}",
