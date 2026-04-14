@@ -627,6 +627,7 @@ export async function updateInvoiceWithPaymentRemovals(
         total: existing.total,
         status: existing.status,
         itemCount: "unknown",
+        amountPaid: existing.amountPaid,
         discount: {
           type: existing.discountType,
           value: existing.discountValue,
@@ -637,6 +638,7 @@ export async function updateInvoiceWithPaymentRemovals(
         total: total.toFixed(2),
         status: newStatus,
         itemCount: validated.items.length,
+        amountPaid: newAmountPaid.toFixed(2),
         discount: {
           type: validated.discountType,
           value: validated.discountValue.toFixed(2),
@@ -649,6 +651,7 @@ export async function updateInvoiceWithPaymentRemovals(
         discountChanged:
           existing.discountType !== validated.discountType ||
           parseFloat(existing.discountValue) !== validated.discountValue,
+        paymentsRemoved: removedPayments.length,
       },
     });
 
