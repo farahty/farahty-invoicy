@@ -9,7 +9,11 @@ import {
   type NewInvoice,
   type InvoiceStatus,
 } from "@/db";
-import { organizations, payments } from "@/db/schema";
+import { organizations, payments, discountTypeEnum } from "@/db/schema";
+import {
+  calculateInvoiceTotals,
+  validateDiscount,
+} from "@/lib/invoice-totals";
 import { eq, and, desc, ilike, ne } from "drizzle-orm";
 import { requireOrgAuth } from "@/lib/session";
 import { revalidatePath } from "next/cache";
@@ -30,6 +34,8 @@ const invoiceSchema = z.object({
   taxRate: z.coerce.number().min(0).max(100).default(0),
   notes: z.string().optional(),
   terms: z.string().optional(),
+  discountType: z.enum(discountTypeEnum).default("fixed"),
+  discountValue: z.coerce.number().min(0).default(0),
   items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
 });
 
@@ -147,18 +153,31 @@ export async function createInvoice(data: InvoiceInput) {
     return { success: false, error: "Client not found" };
   }
 
-  // Calculate totals
-  const subtotal = validated.items.reduce(
+  // Compute the subtotal up front to validate the discount against.
+  const preliminarySubtotal = validated.items.reduce(
     (sum, item) => sum + item.quantity * item.rate,
     0
   );
-  const taxAmount = (subtotal * validated.taxRate) / 100;
-  const total = subtotal + taxAmount;
+
+  const discountError = validateDiscount(
+    validated.discountType,
+    validated.discountValue,
+    preliminarySubtotal
+  );
+  if (discountError) {
+    return { success: false, error: discountError };
+  }
+
+  const { subtotal, discountAmount, taxAmount, total } = calculateInvoiceTotals({
+    items: validated.items,
+    taxRate: validated.taxRate,
+    discountType: validated.discountType,
+    discountValue: validated.discountValue,
+  });
 
   // Generate invoice number
   const invoiceNumber = await generateInvoiceNumber();
 
-  // Create invoice and items in a transaction-like manner
   const [invoice] = await db
     .insert(invoices)
     .values({
@@ -169,6 +188,8 @@ export async function createInvoice(data: InvoiceInput) {
       date: validated.date,
       dueDate: validated.dueDate,
       subtotal: subtotal.toFixed(2),
+      discountType: validated.discountType,
+      discountValue: validated.discountValue.toFixed(2),
       taxRate: validated.taxRate.toFixed(2),
       taxAmount: taxAmount.toFixed(2),
       total: total.toFixed(2),
@@ -216,12 +237,18 @@ export async function createInvoice(data: InvoiceInput) {
       clientId: validated.clientId,
       total: total.toFixed(2),
       itemCount: validated.items.length,
+      discount: {
+        type: validated.discountType,
+        value: validated.discountValue.toFixed(2),
+        amount: discountAmount,
+      },
     },
     details: {
       clientName: client.name,
       subtotal: subtotal.toFixed(2),
       taxRate: validated.taxRate,
       taxAmount: taxAmount.toFixed(2),
+      hasDiscount: discountAmount > 0,
     },
   });
 
@@ -245,11 +272,24 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
       eq(invoices.id, id),
       eq(invoices.organizationId, activeOrganization.id)
     ),
+    with: {
+      items: true,
+    },
   });
 
   if (!existing) {
     return { success: false, error: "Invoice not found" };
   }
+
+  const { discountAmount: previousDiscountAmount } = calculateInvoiceTotals({
+    items: existing.items.map((item) => ({
+      quantity: parseFloat(item.quantity),
+      rate: parseFloat(item.rate),
+    })),
+    taxRate: parseFloat(existing.taxRate),
+    discountType: existing.discountType,
+    discountValue: parseFloat(existing.discountValue) || 0,
+  });
 
   // Verify client ownership
   const client = await db.query.clients.findFirst({
@@ -263,13 +303,27 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
     return { success: false, error: "Client not found" };
   }
 
-  // Calculate totals
-  const subtotal = validated.items.reduce(
+  // Compute the subtotal up front to validate the discount against.
+  const preliminarySubtotal = validated.items.reduce(
     (sum, item) => sum + item.quantity * item.rate,
     0
   );
-  const taxAmount = (subtotal * validated.taxRate) / 100;
-  const total = subtotal + taxAmount;
+
+  const discountError = validateDiscount(
+    validated.discountType,
+    validated.discountValue,
+    preliminarySubtotal
+  );
+  if (discountError) {
+    return { success: false, error: discountError };
+  }
+
+  const { subtotal, discountAmount, taxAmount, total } = calculateInvoiceTotals({
+    items: validated.items,
+    taxRate: validated.taxRate,
+    discountType: validated.discountType,
+    discountValue: validated.discountValue,
+  });
 
   // Calculate new balance due (total - amount already paid)
   const amountPaid = parseFloat(existing.amountPaid);
@@ -291,6 +345,8 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
       date: validated.date,
       dueDate: validated.dueDate,
       subtotal: subtotal.toFixed(2),
+      discountType: validated.discountType,
+      discountValue: validated.discountValue.toFixed(2),
       taxRate: validated.taxRate.toFixed(2),
       taxAmount: taxAmount.toFixed(2),
       total: total.toFixed(2),
@@ -326,16 +382,31 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
     previousValues: {
       total: existing.total,
       status: existing.status,
-      itemCount: "unknown", // We don't have previous items count easily
+      itemCount: "unknown",
+      discount: {
+        type: existing.discountType,
+        value: (parseFloat(existing.discountValue) || 0).toFixed(2),
+        amount: previousDiscountAmount,
+      },
     },
     newValues: {
       total: total.toFixed(2),
       status: newStatus,
       itemCount: validated.items.length,
+      discount: {
+        type: validated.discountType,
+        value: validated.discountValue.toFixed(2),
+        amount: discountAmount,
+      },
     },
     details: {
       totalChanged: existing.total !== total.toFixed(2),
       statusChanged: existing.status !== newStatus,
+      discountChanged:
+        existing.discountType !== validated.discountType ||
+        Math.abs(
+          (parseFloat(existing.discountValue) || 0) - validated.discountValue
+        ) > 1e-6,
     },
   });
 
@@ -365,6 +436,7 @@ export async function updateInvoiceWithPaymentRemovals(
       eq(invoices.organizationId, activeOrganization.id)
     ),
     with: {
+      items: true,
       payments: true,
     },
   });
@@ -372,6 +444,16 @@ export async function updateInvoiceWithPaymentRemovals(
   if (!existing) {
     return { success: false, error: "Invoice not found" };
   }
+
+  const { discountAmount: previousDiscountAmount } = calculateInvoiceTotals({
+    items: existing.items.map((item) => ({
+      quantity: parseFloat(item.quantity),
+      rate: parseFloat(item.rate),
+    })),
+    taxRate: parseFloat(existing.taxRate),
+    discountType: existing.discountType,
+    discountValue: parseFloat(existing.discountValue) || 0,
+  });
 
   // Verify client ownership
   const client = await db.query.clients.findFirst({
@@ -398,13 +480,27 @@ export async function updateInvoiceWithPaymentRemovals(
     return { success: false, error: "Invalid payment IDs provided" };
   }
 
-  // Calculate new totals
-  const subtotal = validated.items.reduce(
+  // Compute the subtotal up front to validate the discount against.
+  const preliminarySubtotal = validated.items.reduce(
     (sum, item) => sum + item.quantity * item.rate,
     0
   );
-  const taxAmount = (subtotal * validated.taxRate) / 100;
-  const total = subtotal + taxAmount;
+
+  const discountError = validateDiscount(
+    validated.discountType,
+    validated.discountValue,
+    preliminarySubtotal
+  );
+  if (discountError) {
+    return { success: false, error: discountError };
+  }
+
+  const { subtotal, discountAmount, taxAmount, total } = calculateInvoiceTotals({
+    items: validated.items,
+    taxRate: validated.taxRate,
+    discountType: validated.discountType,
+    discountValue: validated.discountValue,
+  });
 
   // Calculate remaining payments after removal
   const paymentsToKeep = existing.payments.filter(
@@ -469,6 +565,8 @@ export async function updateInvoiceWithPaymentRemovals(
           date: validated.date,
           dueDate: validated.dueDate,
           subtotal: subtotal.toFixed(2),
+          discountType: validated.discountType,
+          discountValue: validated.discountValue.toFixed(2),
           taxRate: validated.taxRate.toFixed(2),
           taxAmount: taxAmount.toFixed(2),
           total: total.toFixed(2),
@@ -529,19 +627,35 @@ export async function updateInvoiceWithPaymentRemovals(
       action: "updated",
       previousValues: {
         total: existing.total,
-        amountPaid: existing.amountPaid,
         status: existing.status,
+        itemCount: "unknown",
+        amountPaid: existing.amountPaid,
+        discount: {
+          type: existing.discountType,
+          value: (parseFloat(existing.discountValue) || 0).toFixed(2),
+          amount: previousDiscountAmount,
+        },
       },
       newValues: {
         total: total.toFixed(2),
-        amountPaid: newAmountPaid.toFixed(2),
         status: newStatus,
         itemCount: validated.items.length,
+        amountPaid: newAmountPaid.toFixed(2),
+        discount: {
+          type: validated.discountType,
+          value: validated.discountValue.toFixed(2),
+          amount: discountAmount,
+        },
       },
       details: {
-        paymentsRemoved: removedPayments.length,
         totalChanged: existing.total !== total.toFixed(2),
         statusChanged: existing.status !== newStatus,
+        discountChanged:
+          existing.discountType !== validated.discountType ||
+          Math.abs(
+            (parseFloat(existing.discountValue) || 0) - validated.discountValue
+          ) > 1e-6,
+        paymentsRemoved: removedPayments.length,
       },
     });
 
@@ -963,6 +1077,8 @@ export async function duplicateInvoice(id: string) {
       subtotal: original.subtotal,
       taxRate: original.taxRate,
       taxAmount: original.taxAmount,
+      discountType: original.discountType,
+      discountValue: original.discountValue,
       total: original.total,
       notes: original.notes,
       terms: original.terms,

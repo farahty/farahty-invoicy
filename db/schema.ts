@@ -183,6 +183,9 @@ export const invoiceStatusEnum = [
 ] as const;
 export type InvoiceStatus = (typeof invoiceStatusEnum)[number];
 
+export const discountTypeEnum = ["fixed", "percent"] as const;
+export type DiscountType = (typeof discountTypeEnum)[number];
+
 export const paymentMethodEnum = [
   "cash",
   "card",
@@ -215,6 +218,13 @@ export const invoices = pgTable(
       .notNull()
       .default("0"),
     taxAmount: decimal("tax_amount", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    discountType: text("discount_type")
+      .$type<DiscountType>()
+      .notNull()
+      .default("fixed"),
+    discountValue: decimal("discount_value", { precision: 12, scale: 2 })
       .notNull()
       .default("0"),
     total: decimal("total", { precision: 12, scale: 2 }).notNull().default("0"),

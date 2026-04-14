@@ -118,6 +118,11 @@
     "subtotal": "المجموع الفرعي",
     "tax": "الضريبة",
     "taxRate": "نسبة الضريبة",
+    "discount": "الخصم",
+    "discountType": {
+      "fixed": "مبلغ (₪)",
+      "percent": "نسبة (%)"
+    },
     "total": "الإجمالي",
     "notes": "ملاحظات",
     "terms": "الشروط والأحكام",
@@ -182,7 +187,12 @@
     "hasExistingPayments": "هذه الفاتورة لديها دفعات موجودة",
     "amountToRemove": "المبلغ المراد إزالته",
     "remainingPayments": "الدفعات المتبقية",
-    "newBalanceDue": "الرصيد المستحق الجديد"
+    "newBalanceDue": "الرصيد المستحق الجديد",
+    "errors": {
+      "discountNegative": "الخصم يجب أن يكون صفر أو أكثر",
+      "discountPercentOver100": "نسبة الخصم لا يمكن أن تتجاوز 100%",
+      "discountExceedsSubtotal": "الخصم لا يمكن أن يتجاوز المجموع الفرعي"
+    }
   },
   "payments": {
     "title": "المدفوعات",
@@ -422,6 +432,11 @@
       "sent": "إرسال",
       "payment_recorded": "تسجيل دفعة",
       "payment_deleted": "حذف دفعة"
+    },
+    "discount": {
+      "added": "أضاف خصماً بقيمة {to}",
+      "changed": "غيّر الخصم من {from} إلى {to}",
+      "createdWith": "أُنشئت مع خصم بقيمة {to}"
     },
     "descriptions": {
       "client_created": "{user} أنشأ العميل {entity}",

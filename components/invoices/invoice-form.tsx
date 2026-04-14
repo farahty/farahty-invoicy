@@ -36,6 +36,7 @@ import {
   getItemSuggestions,
 } from "@/actions/invoices";
 import type { Client, Invoice, InvoiceItem, Payment } from "@/db/schema";
+import { discountTypeEnum } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { PaymentRemovalDialog } from "./payment-removal-dialog";
@@ -51,12 +52,20 @@ const invoiceSchema = z.object({
   date: z.string().min(1, "Date is required"),
   dueDate: z.string().min(1, "Due date is required"),
   taxRate: z.number().min(0).max(100),
+  discountType: z.enum(discountTypeEnum),
+  discountValue: z.number().min(0),
   notes: z.string().optional(),
   terms: z.string().optional(),
   items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceSchema>;
+
+const KNOWN_DISCOUNT_ERRORS = new Set([
+  "discountNegative",
+  "discountPercentOver100",
+  "discountExceedsSubtotal",
+]);
 
 interface InvoiceFormProps {
   clients: Client[];
@@ -103,6 +112,8 @@ export function InvoiceForm({
         ? format(new Date(invoice.dueDate), "yyyy-MM-dd")
         : format(new Date(), "yyyy-MM-dd"),
       taxRate: invoice ? parseFloat(invoice.taxRate) : 0,
+      discountType: invoice?.discountType ?? "fixed",
+      discountValue: invoice ? parseFloat(invoice.discountValue) || 0 : 0,
       notes: invoice?.notes || "",
       terms: invoice?.terms || "",
       items: invoice?.items.map((item) => ({
@@ -120,14 +131,26 @@ export function InvoiceForm({
 
   const watchedItems = form.watch("items");
   const watchedTaxRate = form.watch("taxRate");
+  const watchedDiscountType = form.watch("discountType");
+  const watchedDiscountValue = form.watch("discountValue");
 
-  // Calculate totals
+  // Calculate live totals — same order as server: subtotal → discount → tax → total
   const subtotal = watchedItems.reduce(
     (sum, item) => sum + (item.quantity || 0) * (item.rate || 0),
     0
   );
-  const taxAmount = (subtotal * (watchedTaxRate || 0)) / 100;
-  const total = subtotal + taxAmount;
+  const discountAmount = Math.max(
+    0,
+    Math.min(
+      watchedDiscountType === "percent"
+        ? subtotal * ((watchedDiscountValue || 0) / 100)
+        : watchedDiscountValue || 0,
+      subtotal
+    )
+  );
+  const discountedSubtotal = subtotal - discountAmount;
+  const taxAmount = (discountedSubtotal * (watchedTaxRate || 0)) / 100;
+  const total = discountedSubtotal + taxAmount;
 
   const formatCurrency = (amount: number) => {
     const formatted = amount.toLocaleString("en-US", {
@@ -135,6 +158,14 @@ export function InvoiceForm({
       maximumFractionDigits: 2,
     });
     return `${formatted} ₪`;
+  };
+
+  const handleActionError = (error: string | undefined, fallback: string) => {
+    if (error && KNOWN_DISCOUNT_ERRORS.has(error)) {
+      form.setError("discountValue", { message: t(`errors.${error}`) });
+    } else {
+      toast.error(error || fallback);
+    }
   };
 
   const onSubmit = async (data: InvoiceFormValues) => {
@@ -166,7 +197,7 @@ export function InvoiceForm({
           router.push(`/invoices/${invoice.id}`);
           router.refresh();
         } else {
-          toast.error(result.error || "Failed to update invoice");
+          handleActionError(result.error, "Failed to update invoice");
         }
       } else {
         const result = await createInvoice(payload);
@@ -174,6 +205,8 @@ export function InvoiceForm({
           toast.success(t("created"));
           router.push(`/invoices/${result.invoice?.id}`);
           router.refresh();
+        } else {
+          handleActionError(result.error, "Failed to create invoice");
         }
       }
     } catch {
@@ -206,7 +239,7 @@ export function InvoiceForm({
         router.push(`/invoices/${invoice.id}`);
         router.refresh();
       } else {
-        toast.error(result.error || "Failed to update invoice");
+        handleActionError(result.error, "Failed to update invoice");
       }
     } catch {
       toast.error("Something went wrong");
@@ -513,6 +546,79 @@ export function InvoiceForm({
                     <div className="flex justify-between text-muted-foreground">
                       <span>{t("subtotal")}</span>
                       <span>{formatCurrency(subtotal)}</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <span>{t("discount")}</span>
+                        <span className="text-destructive">
+                          −{formatCurrency(discountAmount)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FormField
+                          control={form.control}
+                          name="discountType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <div className="flex rounded-md border border-input">
+                                  <button
+                                    type="button"
+                                    aria-pressed={field.value === "fixed"}
+                                    aria-label={t("discountType.fixed")}
+                                    onClick={() => field.onChange("fixed")}
+                                    className={
+                                      "px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                                      (field.value === "fixed"
+                                        ? "bg-accent text-accent-foreground"
+                                        : "text-muted-foreground")
+                                    }
+                                  >
+                                    ₪
+                                  </button>
+                                  <button
+                                    type="button"
+                                    aria-pressed={field.value === "percent"}
+                                    aria-label={t("discountType.percent")}
+                                    onClick={() => field.onChange("percent")}
+                                    className={
+                                      "px-3 py-1.5 text-sm border-s border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                                      (field.value === "percent"
+                                        ? "bg-accent text-accent-foreground"
+                                        : "text-muted-foreground")
+                                    }
+                                  >
+                                    %
+                                  </button>
+                                </div>
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="discountValue"
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  className="text-right"
+                                  value={field.value}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      parseFloat(e.target.value) || 0
+                                    )
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-muted-foreground">{t("tax")}</span>
