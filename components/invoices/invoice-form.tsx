@@ -547,75 +547,78 @@ export function InvoiceForm({
                       <span>{t("subtotal")}</span>
                       <span>{formatCurrency(subtotal)}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">
-                        {t("discount")}
-                      </span>
-                      <FormField
-                        control={form.control}
-                        name="discountType"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <div className="flex rounded-md border border-input">
-                                <button
-                                  type="button"
-                                  aria-pressed={field.value === "fixed"}
-                                  aria-label={t("discountType.fixed")}
-                                  onClick={() => field.onChange("fixed")}
-                                  className={
-                                    "px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
-                                    (field.value === "fixed"
-                                      ? "bg-accent text-accent-foreground"
-                                      : "text-muted-foreground")
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <span>{t("discount")}</span>
+                        <span className="text-destructive">
+                          −{formatCurrency(discountAmount)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FormField
+                          control={form.control}
+                          name="discountType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <div className="flex rounded-md border border-input">
+                                  <button
+                                    type="button"
+                                    aria-pressed={field.value === "fixed"}
+                                    aria-label={t("discountType.fixed")}
+                                    onClick={() => field.onChange("fixed")}
+                                    className={
+                                      "px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                                      (field.value === "fixed"
+                                        ? "bg-accent text-accent-foreground"
+                                        : "text-muted-foreground")
+                                    }
+                                  >
+                                    ₪
+                                  </button>
+                                  <button
+                                    type="button"
+                                    aria-pressed={field.value === "percent"}
+                                    aria-label={t("discountType.percent")}
+                                    onClick={() => field.onChange("percent")}
+                                    className={
+                                      "px-3 py-1.5 text-sm border-s border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                                      (field.value === "percent"
+                                        ? "bg-accent text-accent-foreground"
+                                        : "text-muted-foreground")
+                                    }
+                                  >
+                                    %
+                                  </button>
+                                </div>
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="discountValue"
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  className="text-right"
+                                  value={field.value}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      parseFloat(e.target.value) || 0
+                                    )
                                   }
-                                >
-                                  ₪
-                                </button>
-                                <button
-                                  type="button"
-                                  aria-pressed={field.value === "percent"}
-                                  aria-label={t("discountType.percent")}
-                                  onClick={() => field.onChange("percent")}
-                                  className={
-                                    "px-2 py-1 text-xs border-s border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
-                                    (field.value === "percent"
-                                      ? "bg-accent text-accent-foreground"
-                                      : "text-muted-foreground")
-                                  }
-                                >
-                                  %
-                                </button>
-                              </div>
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="discountValue"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                className="text-right"
-                                value={field.value}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    parseFloat(e.target.value) || 0
-                                  )
-                                }
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <span className="w-24 text-right text-destructive">
-                        −{formatCurrency(discountAmount)}
-                      </span>
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-muted-foreground">{t("tax")}</span>
