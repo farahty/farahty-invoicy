@@ -33,6 +33,19 @@ interface ActivityLogListProps {
   showEntity?: boolean;
 }
 
+interface DiscountSnapshot {
+  type: "fixed" | "percent";
+  value: string;
+  amount: number;
+}
+
+function formatDiscountPart(snapshot: DiscountSnapshot): string {
+  const money = `${snapshot.amount.toFixed(2)} ₪`;
+  return snapshot.type === "percent"
+    ? `${money} (${snapshot.value}%)`
+    : money;
+}
+
 const entityIcons = {
   client: User,
   invoice: FileText,
@@ -155,6 +168,53 @@ export function ActivityLogList({
                   )}
                 </div>
               )}
+
+              {log.action === "updated" &&
+                (log.details as Record<string, unknown>)?.discountChanged ===
+                  true &&
+                (() => {
+                  const prev = (log.previousValues as Record<string, unknown>)
+                    ?.discount as DiscountSnapshot | undefined;
+                  const next = (log.newValues as Record<string, unknown>)
+                    ?.discount as DiscountSnapshot | undefined;
+                  if (!prev || !next) return null;
+                  const userName = log.user?.name || "Unknown User";
+                  if (prev.amount === 0) {
+                    return (
+                      <div className="text-sm text-muted-foreground mt-1">
+                        {t("discount.added", {
+                          user: userName,
+                          to: formatDiscountPart(next),
+                        })}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {t("discount.changed", {
+                        user: userName,
+                        from: formatDiscountPart(prev),
+                        to: formatDiscountPart(next),
+                      })}
+                    </div>
+                  );
+                })()}
+
+              {log.action === "created" &&
+                (log.details as Record<string, unknown>)?.hasDiscount ===
+                  true &&
+                (() => {
+                  const next = (log.newValues as Record<string, unknown>)
+                    ?.discount as DiscountSnapshot | undefined;
+                  if (!next || next.amount <= 0) return null;
+                  return (
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {t("discount.createdWith", {
+                        to: formatDiscountPart(next),
+                      })}
+                    </div>
+                  );
+                })()}
 
               {/* Timestamp */}
               <div className="text-xs text-muted-foreground mt-1">
