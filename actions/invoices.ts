@@ -168,7 +168,7 @@ export async function createInvoice(data: InvoiceInput) {
     return { success: false, error: discountError };
   }
 
-  const { subtotal, taxAmount, total } = calculateInvoiceTotals({
+  const { subtotal, discountAmount, taxAmount, total } = calculateInvoiceTotals({
     items: validated.items,
     taxRate: validated.taxRate,
     discountType: validated.discountType,
@@ -237,12 +237,18 @@ export async function createInvoice(data: InvoiceInput) {
       clientId: validated.clientId,
       total: total.toFixed(2),
       itemCount: validated.items.length,
+      discount: {
+        type: validated.discountType,
+        value: validated.discountValue.toFixed(2),
+        amount: discountAmount,
+      },
     },
     details: {
       clientName: client.name,
       subtotal: subtotal.toFixed(2),
       taxRate: validated.taxRate,
       taxAmount: taxAmount.toFixed(2),
+      hasDiscount: discountAmount > 0,
     },
   });
 
@@ -266,11 +272,24 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
       eq(invoices.id, id),
       eq(invoices.organizationId, activeOrganization.id)
     ),
+    with: {
+      items: true,
+    },
   });
 
   if (!existing) {
     return { success: false, error: "Invoice not found" };
   }
+
+  const { discountAmount: previousDiscountAmount } = calculateInvoiceTotals({
+    items: existing.items.map((item) => ({
+      quantity: parseFloat(item.quantity),
+      rate: parseFloat(item.rate),
+    })),
+    taxRate: parseFloat(existing.taxRate),
+    discountType: existing.discountType,
+    discountValue: parseFloat(existing.discountValue) || 0,
+  });
 
   // Verify client ownership
   const client = await db.query.clients.findFirst({
@@ -299,7 +318,7 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
     return { success: false, error: discountError };
   }
 
-  const { subtotal, taxAmount, total } = calculateInvoiceTotals({
+  const { subtotal, discountAmount, taxAmount, total } = calculateInvoiceTotals({
     items: validated.items,
     taxRate: validated.taxRate,
     discountType: validated.discountType,
@@ -363,16 +382,29 @@ export async function updateInvoice(id: string, data: InvoiceInput) {
     previousValues: {
       total: existing.total,
       status: existing.status,
-      itemCount: "unknown", // We don't have previous items count easily
+      itemCount: "unknown",
+      discount: {
+        type: existing.discountType,
+        value: existing.discountValue,
+        amount: previousDiscountAmount,
+      },
     },
     newValues: {
       total: total.toFixed(2),
       status: newStatus,
       itemCount: validated.items.length,
+      discount: {
+        type: validated.discountType,
+        value: validated.discountValue.toFixed(2),
+        amount: discountAmount,
+      },
     },
     details: {
       totalChanged: existing.total !== total.toFixed(2),
       statusChanged: existing.status !== newStatus,
+      discountChanged:
+        existing.discountType !== validated.discountType ||
+        parseFloat(existing.discountValue) !== validated.discountValue,
     },
   });
 
@@ -402,6 +434,7 @@ export async function updateInvoiceWithPaymentRemovals(
       eq(invoices.organizationId, activeOrganization.id)
     ),
     with: {
+      items: true,
       payments: true,
     },
   });
@@ -409,6 +442,16 @@ export async function updateInvoiceWithPaymentRemovals(
   if (!existing) {
     return { success: false, error: "Invoice not found" };
   }
+
+  const { discountAmount: previousDiscountAmount } = calculateInvoiceTotals({
+    items: existing.items.map((item) => ({
+      quantity: parseFloat(item.quantity),
+      rate: parseFloat(item.rate),
+    })),
+    taxRate: parseFloat(existing.taxRate),
+    discountType: existing.discountType,
+    discountValue: parseFloat(existing.discountValue) || 0,
+  });
 
   // Verify client ownership
   const client = await db.query.clients.findFirst({
@@ -450,7 +493,7 @@ export async function updateInvoiceWithPaymentRemovals(
     return { success: false, error: discountError };
   }
 
-  const { subtotal, taxAmount, total } = calculateInvoiceTotals({
+  const { subtotal, discountAmount, taxAmount, total } = calculateInvoiceTotals({
     items: validated.items,
     taxRate: validated.taxRate,
     discountType: validated.discountType,
@@ -582,19 +625,30 @@ export async function updateInvoiceWithPaymentRemovals(
       action: "updated",
       previousValues: {
         total: existing.total,
-        amountPaid: existing.amountPaid,
         status: existing.status,
+        itemCount: "unknown",
+        discount: {
+          type: existing.discountType,
+          value: existing.discountValue,
+          amount: previousDiscountAmount,
+        },
       },
       newValues: {
         total: total.toFixed(2),
-        amountPaid: newAmountPaid.toFixed(2),
         status: newStatus,
         itemCount: validated.items.length,
+        discount: {
+          type: validated.discountType,
+          value: validated.discountValue.toFixed(2),
+          amount: discountAmount,
+        },
       },
       details: {
-        paymentsRemoved: removedPayments.length,
         totalChanged: existing.total !== total.toFixed(2),
         statusChanged: existing.status !== newStatus,
+        discountChanged:
+          existing.discountType !== validated.discountType ||
+          parseFloat(existing.discountValue) !== validated.discountValue,
       },
     });
 
