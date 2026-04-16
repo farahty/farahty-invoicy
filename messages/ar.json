@@ -102,7 +102,12 @@
     "totalClients": "إجمالي العملاء",
     "thisMonth": "هذا الشهر",
     "lastMonth": "الشهر الماضي",
-    "viewAll": "عرض الكل"
+    "viewAll": "عرض الكل",
+    "totalExpenses": "إجمالي المصروفات",
+    "netProfit": "صافي الربح",
+    "recentExpenses": "المصروفات الأخيرة",
+    "viewAllExpenses": "عرض الكل",
+    "noRecentExpenses": "لا توجد مصروفات بعد"
   },
   "invoices": {
     "title": "الفواتير",

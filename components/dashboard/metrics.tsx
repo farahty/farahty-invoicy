@@ -7,6 +7,10 @@ import {
   AlertTriangle,
   Users,
   CircleDashed,
+  Receipt,
+  TrendingUp,
+  TrendingDown,
+  type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -18,6 +22,9 @@ interface DashboardMetricsProps {
     partialCount: number;
     totalInvoices: number;
     totalClients: number;
+    totalExpenses: number;
+    netProfit: number;
+    thisMonthProfit: number;
   };
 }
 
@@ -32,7 +39,17 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
     return `${formatted} ₪`;
   };
 
-  const cards = [
+  const cards: {
+    title: string;
+    value: string;
+    subtitle?: string;
+    icon: LucideIcon;
+    iconBg: string;
+    iconColor: string;
+    highlight?: boolean;
+    highlightClass?: string;
+    textHighlight?: string;
+  }[] = [
     {
       title: t("totalRevenue"),
       value: formatCurrency(metrics.totalRevenue),
@@ -74,10 +91,28 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
       iconBg: "bg-chart-4/15",
       iconColor: "text-chart-4",
     },
+    {
+      title: t("totalExpenses"),
+      value: formatCurrency(metrics.totalExpenses),
+      icon: Receipt,
+      iconBg: "bg-chart-3/15",
+      iconColor: "text-chart-3",
+    },
+    {
+      title: t("netProfit"),
+      value: formatCurrency(metrics.netProfit),
+      subtitle: `${t("thisMonth")}: ${metrics.thisMonthProfit >= 0 ? "" : "−"}${formatCurrency(Math.abs(metrics.thisMonthProfit))}`,
+      icon: metrics.netProfit >= 0 ? TrendingUp : TrendingDown,
+      iconBg: metrics.netProfit >= 0 ? "bg-chart-2/15" : "bg-destructive/10",
+      iconColor: metrics.netProfit >= 0 ? "text-chart-2" : "text-destructive",
+      highlight: metrics.netProfit < 0,
+      highlightClass: "border-destructive/50 bg-destructive/5",
+      textHighlight: "text-destructive",
+    },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
       {cards.map((card) => (
         <Card
           key={card.title}
@@ -98,6 +133,11 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
                 >
                   {card.value}
                 </p>
+                {card.subtitle && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {card.subtitle}
+                  </p>
+                )}
               </div>
               <div className={`p-2 rounded-lg ${card.iconBg} hidden sm:block`}>
                 <card.icon
