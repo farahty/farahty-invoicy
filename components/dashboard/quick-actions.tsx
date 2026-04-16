@@ -25,7 +25,7 @@ export function QuickActions() {
       <Link href="/expenses/new">
         <Button variant="outline" className="gap-2">
           <Receipt className="h-4 w-4" />
-          {t("newExpense")}
+          <span>{t("expenses.newExpense")}</span>
         </Button>
       </Link>
     </div>
