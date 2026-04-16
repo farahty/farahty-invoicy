@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getInvoice } from "@/actions/invoices";
 import { getPaymentsByInvoice } from "@/actions/payments";
+import { requireOrgAuth } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,7 @@ import { format } from "date-fns";
 import { InvoiceStatusActions } from "@/components/invoices/invoice-status-actions";
 import { RecordPaymentDialog } from "@/components/invoices/record-payment-dialog";
 import { PaymentHistory } from "@/components/invoices/payment-history";
+import { ShareInvoice } from "@/components/invoices/share-invoice";
 import type { InvoiceStatus } from "@/db/schema";
 import { getTranslations } from "next-intl/server";
 import { calculateInvoiceTotals } from "@/lib/invoice-totals";
@@ -33,6 +35,7 @@ export default async function InvoiceDetailPage({
   params,
 }: InvoiceDetailPageProps) {
   const { id } = await params;
+  const { activeOrganization } = await requireOrgAuth();
   const invoice = await getInvoice(id);
   const t = await getTranslations("invoices");
   const tPayments = await getTranslations("payments");
@@ -307,6 +310,15 @@ export default async function InvoiceDetailPage({
               </Link>
             </CardContent>
           </Card>
+
+          {/* Share */}
+          <ShareInvoice
+            invoiceId={invoice.id}
+            invoiceNumber={invoice.invoiceNumber}
+            organizationName={activeOrganization!.name}
+            shareToken={invoice.shareToken}
+            isPublic={invoice.isPublic}
+          />
 
           {/* Payments */}
           <Card>
