@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Send,
   DollarSign,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ActivityLog, User as UserType } from "@/db/schema";
@@ -52,6 +53,7 @@ const entityIcons = {
   payment: CreditCard,
   organization: Building2,
   member: Users,
+  expense: Receipt,
 };
 
 const actionIcons = {

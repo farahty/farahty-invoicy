@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, UserPlus } from "lucide-react";
+import { Plus, UserPlus, Receipt } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export function QuickActions() {
@@ -20,6 +20,12 @@ export function QuickActions() {
         <Button variant="outline" className="gap-2">
           <UserPlus className="h-4 w-4" />
           <span>{t("clients.newClient")}</span>
+        </Button>
+      </Link>
+      <Link href="/expenses/new">
+        <Button variant="outline" className="gap-2">
+          <Receipt className="h-4 w-4" />
+          <span>{t("expenses.newExpense")}</span>
         </Button>
       </Link>
     </div>
