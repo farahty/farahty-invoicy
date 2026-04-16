@@ -11,6 +11,8 @@ import {
 import { OrganizationSettingsForm } from "@/components/organizations/organization-settings-form";
 import { MembersList } from "@/components/organizations/members-list";
 import { InvitationsForm } from "@/components/organizations/invitations-form";
+import { ExpenseCategoryManager } from "@/components/expenses/expense-category-manager";
+import { getExpenseCategories } from "@/actions/expense-categories";
 import { db } from "@/db";
 import { organizations, members, invitations } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -19,6 +21,7 @@ export default async function SettingsPage() {
   const { activeOrganization, user } = await requireOrgAuth();
   const t = await getTranslations("organizations");
   const tSettings = await getTranslations("settings");
+  const tExpCat = await getTranslations("expenseCategories");
 
   if (!activeOrganization) {
     redirect("/onboarding");
@@ -40,6 +43,9 @@ export default async function SettingsPage() {
       user: true,
     },
   });
+
+  // Get expense categories
+  const categories = await getExpenseCategories();
 
   // Get pending invitations
   const pendingInvitations = await db.query.invitations.findMany({
@@ -96,6 +102,17 @@ export default async function SettingsPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Expense Categories */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{tExpCat("title")}</CardTitle>
+            <CardDescription>{tExpCat("description")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ExpenseCategoryManager categories={categories} />
+          </CardContent>
+        </Card>
 
       {/* Invitations - Only for owners/admins */}
       {isOwnerOrAdmin && (
