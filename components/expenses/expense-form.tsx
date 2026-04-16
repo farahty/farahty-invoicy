@@ -194,7 +194,7 @@ export function ExpenseForm({
                       defaultValue={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder={t("selectCategory")} />
                         </SelectTrigger>
                       </FormControl>
@@ -223,7 +223,7 @@ export function ExpenseForm({
                       defaultValue={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue
                             placeholder={t("selectPaymentMethod")}
                           />
@@ -279,7 +279,7 @@ export function ExpenseForm({
                       defaultValue={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder={t("selectClient")} />
                         </SelectTrigger>
                       </FormControl>
