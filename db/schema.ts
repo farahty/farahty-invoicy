@@ -433,6 +433,7 @@ export const activityEntityEnum = [
   "payment",
   "organization",
   "member",
+  "expense",
 ] as const;
 export type ActivityEntity = (typeof activityEntityEnum)[number];
 
@@ -472,6 +473,66 @@ export const activityLogs = pgTable(
   ]
 );
 
+// ============================================
+// Expense Categories
+// ============================================
+
+export const expenseCategories = pgTable(
+  "expense_categories",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    isDefault: boolean("is_default").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("expense_categories_organization_id_idx").on(table.organizationId),
+  ]
+);
+
+// ============================================
+// Expenses
+// ============================================
+
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => expenseCategories.id),
+    clientId: uuid("client_id").references(() => clients.id, {
+      onDelete: "set null",
+    }),
+    amount: decimal("amount", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    date: timestamp("date").notNull(),
+    description: text("description"),
+    paymentMethod: text("payment_method").$type<PaymentMethod>(),
+    reference: text("reference"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("expenses_organization_id_idx").on(table.organizationId),
+    index("expenses_category_id_idx").on(table.categoryId),
+    index("expenses_client_id_idx").on(table.clientId),
+    index("expenses_date_idx").on(table.date),
+  ]
+);
+
 export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
   organization: one(organizations, {
     fields: [activityLogs.organizationId],
@@ -480,6 +541,36 @@ export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
   user: one(users, {
     fields: [activityLogs.userId],
     references: [users.id],
+  }),
+}));
+
+export const expenseCategoriesRelations = relations(
+  expenseCategories,
+  ({ one, many }) => ({
+    organization: one(organizations, {
+      fields: [expenseCategories.organizationId],
+      references: [organizations.id],
+    }),
+    expenses: many(expenses),
+  })
+);
+
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [expenses.organizationId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [expenses.userId],
+    references: [users.id],
+  }),
+  category: one(expenseCategories, {
+    fields: [expenses.categoryId],
+    references: [expenseCategories.id],
+  }),
+  client: one(clients, {
+    fields: [expenses.clientId],
+    references: [clients.id],
   }),
 }));
 
@@ -519,3 +610,6 @@ export type InvoiceWithRelations = Invoice & {
   items: InvoiceItem[];
   payments?: Payment[];
 };
+
+export type ExpenseCategory = typeof expenseCategories.$inferSelect;
+export type Expense = typeof expenses.$inferSelect;
