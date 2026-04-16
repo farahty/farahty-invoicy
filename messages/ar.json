@@ -41,6 +41,7 @@
     "dashboard": "لوحة التحكم",
     "invoices": "الفواتير",
     "clients": "العملاء",
+    "expenses": "المصروفات",
     "activity": "النشاط",
     "settings": "الإعدادات",
     "account": "الحساب",
@@ -194,6 +195,44 @@
       "discountExceedsSubtotal": "الخصم لا يمكن أن يتجاوز المجموع الفرعي"
     }
   },
+  "expenses": {
+    "title": "المصروفات",
+    "newExpense": "مصروف جديد",
+    "editExpense": "تعديل المصروف",
+    "deleteExpense": "حذف المصروف",
+    "deleteConfirm": "هل أنت متأكد من حذف هذا المصروف؟",
+    "amount": "المبلغ",
+    "date": "التاريخ",
+    "category": "الفئة",
+    "description": "الوصف",
+    "paymentMethod": "طريقة الدفع",
+    "reference": "المرجع",
+    "notes": "ملاحظات",
+    "client": "العميل",
+    "selectCategory": "اختر الفئة",
+    "selectClient": "اختر العميل (اختياري)",
+    "selectPaymentMethod": "اختر طريقة الدفع",
+    "expenseDetails": "تفاصيل المصروف",
+    "additionalInfo": "معلومات إضافية",
+    "created": "تم إنشاء المصروف",
+    "updated": "تم تحديث المصروف",
+    "deleted": "تم حذف المصروف",
+    "noExpenses": "لا توجد مصروفات بعد",
+    "noExpensesDescription": "ابدأ بتتبع مصروفات عملك",
+    "noResults": "لا توجد مصروفات تطابق بحثك",
+    "searchPlaceholder": "البحث في المصروفات...",
+    "totalFiltered": "المجموع",
+    "thisMonth": "هذا الشهر",
+    "count": "العدد",
+    "allCategories": "جميع الفئات",
+    "allMethods": "جميع الطرق",
+    "errors": {
+      "amountRequired": "المبلغ مطلوب",
+      "amountPositive": "المبلغ يجب أن يكون أكبر من صفر",
+      "categoryRequired": "الرجاء اختيار فئة",
+      "dateRequired": "التاريخ مطلوب"
+    }
+  },
   "payments": {
     "title": "المدفوعات",
     "recordPayment": "تسجيل دفعة",
@@ -318,6 +357,23 @@
       "invoicePrefix": "INV"
     }
   },
+  "expenseCategories": {
+    "title": "فئات المصروفات",
+    "description": "إدارة فئات تنظيم المصروفات",
+    "materials": "مواد",
+    "rent": "إيجار",
+    "utilities": "مرافق",
+    "equipment": "معدات",
+    "shipping": "شحن",
+    "maintenance": "صيانة",
+    "supplies": "مستلزمات",
+    "other": "أخرى",
+    "addCategory": "إضافة فئة",
+    "categoryName": "اسم الفئة",
+    "categoryInUse": "لا يمكن الحذف — هذه الفئة تحتوي على مصروفات",
+    "categoryIsDefault": "لا يمكن حذف الفئات الافتراضية",
+    "unnamed": "فئة بدون اسم"
+  },
   "validation": {
     "required": "هذا الحقل مطلوب",
     "email": "يرجى إدخال بريد إلكتروني صحيح",
@@ -422,7 +478,8 @@
       "invoice": "فاتورة",
       "payment": "دفعة",
       "organization": "منظمة",
-      "member": "عضو"
+      "member": "عضو",
+      "expense": "مصروف"
     },
     "actions": {
       "created": "إنشاء",

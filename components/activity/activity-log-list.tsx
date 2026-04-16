@@ -52,6 +52,7 @@ const entityIcons = {
   payment: CreditCard,
   organization: Building2,
   member: Users,
+  expense: DollarSign,
 };
 
 const actionIcons = {

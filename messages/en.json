@@ -41,6 +41,7 @@
     "dashboard": "Dashboard",
     "invoices": "Invoices",
     "clients": "Clients",
+    "expenses": "Expenses",
     "activity": "Activity",
     "settings": "Settings",
     "account": "Account",
@@ -194,6 +195,44 @@
       "discountExceedsSubtotal": "Discount cannot exceed the subtotal"
     }
   },
+  "expenses": {
+    "title": "Expenses",
+    "newExpense": "New Expense",
+    "editExpense": "Edit Expense",
+    "deleteExpense": "Delete Expense",
+    "deleteConfirm": "Are you sure you want to delete this expense?",
+    "amount": "Amount",
+    "date": "Date",
+    "category": "Category",
+    "description": "Description",
+    "paymentMethod": "Payment Method",
+    "reference": "Reference",
+    "notes": "Notes",
+    "client": "Client",
+    "selectCategory": "Select category",
+    "selectClient": "Select client (optional)",
+    "selectPaymentMethod": "Select payment method",
+    "expenseDetails": "Expense Details",
+    "additionalInfo": "Additional Info",
+    "created": "Expense created",
+    "updated": "Expense updated",
+    "deleted": "Expense deleted",
+    "noExpenses": "No expenses yet",
+    "noExpensesDescription": "Start tracking your business expenses",
+    "noResults": "No expenses match your search",
+    "searchPlaceholder": "Search expenses...",
+    "totalFiltered": "Total",
+    "thisMonth": "This Month",
+    "count": "Count",
+    "allCategories": "All Categories",
+    "allMethods": "All Methods",
+    "errors": {
+      "amountRequired": "Amount is required",
+      "amountPositive": "Amount must be greater than 0",
+      "categoryRequired": "Please select a category",
+      "dateRequired": "Date is required"
+    }
+  },
   "payments": {
     "title": "Payments",
     "recordPayment": "Record Payment",
@@ -318,6 +357,23 @@
       "invoicePrefix": "INV"
     }
   },
+  "expenseCategories": {
+    "title": "Expense Categories",
+    "description": "Manage categories for organizing expenses",
+    "materials": "Materials",
+    "rent": "Rent",
+    "utilities": "Utilities",
+    "equipment": "Equipment",
+    "shipping": "Shipping",
+    "maintenance": "Maintenance",
+    "supplies": "Supplies",
+    "other": "Other",
+    "addCategory": "Add Category",
+    "categoryName": "Category name",
+    "categoryInUse": "Cannot delete — this category has expenses",
+    "categoryIsDefault": "Default categories cannot be deleted",
+    "unnamed": "Unnamed Category"
+  },
   "validation": {
     "required": "This field is required",
     "email": "Please enter a valid email",
@@ -422,7 +478,8 @@
       "invoice": "Invoice",
       "payment": "Payment",
       "organization": "Organization",
-      "member": "Member"
+      "member": "Member",
+      "expense": "expense"
     },
     "actions": {
       "created": "Created",
