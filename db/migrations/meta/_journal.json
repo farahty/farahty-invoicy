@@ -29,6 +29,13 @@
       "when": 1776363114651,
       "tag": "0003_military_expediter",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776366446931,
+      "tag": "0004_familiar_epoch",
+      "breakpoints": true
     }
   ]
 }

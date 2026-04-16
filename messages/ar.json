@@ -198,7 +198,18 @@
       "discountNegative": "الخصم يجب أن يكون صفر أو أكثر",
       "discountPercentOver100": "نسبة الخصم لا يمكن أن تتجاوز 100%",
       "discountExceedsSubtotal": "الخصم لا يمكن أن يتجاوز المجموع الفرعي"
-    }
+    },
+    "share": "مشاركة",
+    "publicLink": "رابط عام",
+    "enableSharing": "فعّل المشاركة للحصول على رابط عام",
+    "linkCopied": "تم نسخ الرابط",
+    "copyLink": "نسخ الرابط",
+    "shareWhatsApp": "واتساب",
+    "shareMessage": "فاتورة {number} من {org}",
+    "disableSharing": "إيقاف المشاركة",
+    "publicInvoice": "فاتورة",
+    "downloadPdf": "تحميل PDF",
+    "poweredBy": "مدعوم من"
   },
   "expenses": {
     "title": "المصروفات",

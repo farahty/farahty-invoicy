@@ -20,6 +20,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { sendEmail, emailSubjects } from "@/lib/email";
 import { logActivity } from "./activity";
+import { nanoid } from "nanoid";
 
 const invoiceItemSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -1113,4 +1114,93 @@ export async function duplicateInvoice(id: string) {
 
   revalidatePath("/invoices");
   return { success: true, invoice: newInvoice };
+}
+
+export async function getInvoiceByToken(token: string) {
+  return db.query.invoices.findFirst({
+    where: and(
+      eq(invoices.shareToken, token),
+      eq(invoices.isPublic, true)
+    ),
+    with: {
+      client: true,
+      items: {
+        orderBy: (items, { asc }) => [asc(items.sortOrder)],
+      },
+    },
+  });
+}
+
+export async function enableSharing(invoiceId: string) {
+  const { activeOrganization } = await requireOrgAuth();
+  if (!activeOrganization)
+    return { success: false, error: "No active organization" };
+
+  const existing = await db.query.invoices.findFirst({
+    where: and(
+      eq(invoices.id, invoiceId),
+      eq(invoices.organizationId, activeOrganization.id)
+    ),
+  });
+  if (!existing)
+    return { success: false, error: "Invoice not found" };
+
+  const token = existing.shareToken || nanoid(21);
+
+  await db
+    .update(invoices)
+    .set({
+      shareToken: token,
+      isPublic: true,
+      updatedAt: new Date(),
+    })
+    .where(eq(invoices.id, invoiceId));
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const shareUrl = `${appUrl}/invoice/${token}`;
+
+  await logActivity({
+    entityType: "invoice",
+    entityId: invoiceId,
+    entityName: existing.invoiceNumber,
+    action: "updated",
+    details: { sharingEnabled: true, shareUrl },
+  });
+
+  revalidatePath(`/invoices/${invoiceId}`);
+  return { success: true, shareUrl, token };
+}
+
+export async function disableSharing(invoiceId: string) {
+  const { activeOrganization } = await requireOrgAuth();
+  if (!activeOrganization)
+    return { success: false, error: "No active organization" };
+
+  const existing = await db.query.invoices.findFirst({
+    where: and(
+      eq(invoices.id, invoiceId),
+      eq(invoices.organizationId, activeOrganization.id)
+    ),
+  });
+  if (!existing)
+    return { success: false, error: "Invoice not found" };
+
+  await db
+    .update(invoices)
+    .set({
+      isPublic: false,
+      updatedAt: new Date(),
+    })
+    .where(eq(invoices.id, invoiceId));
+
+  await logActivity({
+    entityType: "invoice",
+    entityId: invoiceId,
+    entityName: existing.invoiceNumber,
+    action: "updated",
+    details: { sharingDisabled: true },
+  });
+
+  revalidatePath(`/invoices/${invoiceId}`);
+  return { success: true };
 }

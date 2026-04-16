@@ -198,7 +198,18 @@
       "discountNegative": "Discount must be 0 or greater",
       "discountPercentOver100": "Discount percentage cannot exceed 100%",
       "discountExceedsSubtotal": "Discount cannot exceed the subtotal"
-    }
+    },
+    "share": "Share",
+    "publicLink": "Public Link",
+    "enableSharing": "Enable sharing to get a public link",
+    "linkCopied": "Link copied to clipboard",
+    "copyLink": "Copy Link",
+    "shareWhatsApp": "WhatsApp",
+    "shareMessage": "Invoice {number} from {org}",
+    "disableSharing": "Disable sharing",
+    "publicInvoice": "Invoice",
+    "downloadPdf": "Download PDF",
+    "poweredBy": "Powered by"
   },
   "expenses": {
     "title": "Expenses",
