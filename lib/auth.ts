@@ -4,6 +4,7 @@ import { organization } from "better-auth/plugins";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { sendEmail, emailSubjects } from "./email";
+import { seedDefaultCategories } from "@/actions/expense-categories";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -89,6 +90,17 @@ export const auth = betterAuth({
     }),
   ],
   databaseHooks: {
+    organization: {
+      create: {
+        after: async (org: { id: string }) => {
+          try {
+            await seedDefaultCategories(org.id);
+          } catch (error) {
+            console.error("Failed to seed expense categories:", error);
+          }
+        },
+      },
+    },
     session: {
       create: {
         before: async (session) => {
