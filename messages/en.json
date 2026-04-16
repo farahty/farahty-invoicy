@@ -102,7 +102,12 @@
     "totalClients": "Total Clients",
     "thisMonth": "This month",
     "lastMonth": "Last month",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "totalExpenses": "Total Expenses",
+    "netProfit": "Net Profit",
+    "recentExpenses": "Recent Expenses",
+    "viewAllExpenses": "View All",
+    "noRecentExpenses": "No expenses yet"
   },
   "invoices": {
     "title": "Invoices",
