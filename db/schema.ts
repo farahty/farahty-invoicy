@@ -242,6 +242,8 @@ export const invoices = pgTable(
     paidAt: timestamp("paid_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    shareToken: text("share_token").unique(),
+    isPublic: boolean("is_public").notNull().default(false),
   },
   (table) => [
     index("invoices_user_id_idx").on(table.userId),
